@@ -1,0 +1,21 @@
+services:
+  frontend:
+    container_name: frontend
+    image: frontend
+    build:
+      context: frontend
+    ports:
+    - "0.0.0.0:5001:80"
+  backend:
+    container_name: backend
+    image: backend
+    build:
+      context: backend
+      # target: production
+    ports:
+    - "0.0.0.0:5000:5000"
+  db:
+    image: "mongo"
+    container_name: mongo
+    volumes:
+    - ./data:/data/db

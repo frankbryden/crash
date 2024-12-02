@@ -1,37 +1,85 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from typing import Union
 from pydantic import BaseModel
+import json
+from threading import Thread
+import time
 
-from GameHandler import GameHandler
+from game_handler import GameHandler
 
 app = FastAPI()
 
-@app.get("/")
-async def read_root():
-    return {"Hello": "World"}
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
 
-@app.get("/items/{item_id}")
-async def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
 
 
 game_handler = GameHandler()
 game = game_handler.get_game()
 
+# Server loop
+def loop():
+    while True:
+        current_players = game_handler.players
+        
+        if len(current_players) > 0 and not game.ongoing:
+            game.start_game()
+            print("Game starting!")
+        
+        if game.is_crashed():
+            game.reset_game()
+            print("reseting game!")
 
-@app.post("/game/start")
-async def start():
-    if game.game_started:
-        return {"gamestate":"Game already started"}
-    else :
-        game.start_game()
-        return {"gamestate":"Game starting!"}
+thread = Thread(target = loop)
+thread.start()
 
-@app.put("/game/{name}")
-async def play(name: str):
-    if not game.game_started:
-        return {"gamestate":"Game not started yet"}
-    else :
-        return {"name" : name , "mult" : game.get_multiplicator()}
+"""
+ws expects json
+type : join,bid,cashout,lobby,crash,state
+name : player name # only for join messages
+amount : amount of money to bid # only for bid messages
+state: waiting,playing # only for state messages
+"""
 
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    
+    await websocket.accept()
+
+    while True:
+        current_players = game_handler.players
+        print("current_players : ",current_players)
+        data = await websocket.receive_text()
+        message = json.loads(data)
+        
+        if message["type"] == "join":
+            name = message["name"]
+            game_handler.join(websocket,name)
+
+            for ws in current_players:
+                await ws.send_text(f"{name} joined the lobby!")
+            
+        elif message["type"] == "bid":
+            if not game.ongoing:
+                await websocket.send_text(f"A game is not currently in progress.")
+            else:
+                amount = message["amount"]
+                for ws in current_players:
+                    await ws.send_text(f"{current_players[ws]} bid {amount}.")
+        

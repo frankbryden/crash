@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* #root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+} */
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+input[type="radio"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@import url("https://fonts.googleapis.com/css?family=Poppins:100,100i,200,200i,300,300i,400,400i,500,500i,600,600i,700,700i,800,800i,900,900i&subset=devanagari,latin-ext");
+@layer components {
+  .card {
+    @apply rounded-lg shadow-lg p-6 relative overflow-hidden transition-transform duration-500 ease-in bg-white;
+    filter: drop-shadow(0 5px 10px 0 #ffffff);
+  }
+
+  .card::before {
+    content: "";
+    @apply absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 10px; /* Adjust this width to control the visible strip size */
+    border-radius: 0 10px 10px 0; /* Adjust to match the card's border radius */
+    transform: scale(1);
+    transform-origin: right center; /* Ensure the transformation starts from the right edge */
+    transition: transform 0.25s ease-out;
+  }
+
+  .card:hover::before {
+    transition-delay: 0.2s;
+    transform: scaleX(20); /* Adjust this scale factor to control how far the color extends */
+    border-radius: 0; /* Remove border-radius on hover to avoid white corners */
+  }
+
+  .hover-color-1::before {
+    background: #ff6347; /* Tomato */
+  }
+
+  .hover-color-2::before {
+    background: #4682b4; /* Steel Blue */
+  }
+
+  .hover-color-3::before {
+    background: #32cd32; /* Lime Green */
+  }
+
+  .hover-color-4::before {
+    background: #ff69b4; /* Hot Pink */
+  }
+
+  .hover-content {
+    @apply hidden absolute inset-0 flex flex-col justify-center items-start pl-20;
+  }
+
+  .card:hover .hover-content {
+    @apply block;
+  }
+
+  .card:hover .content {
+    @apply hidden;
+  }
+
+  .card img {
+    @apply static left-0 top-1/2 transform -translate-y-1/2; /* Ensure the image remains static, aligned to the left, and centered vertically */
+  }
+}

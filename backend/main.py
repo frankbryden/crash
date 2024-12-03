@@ -52,9 +52,9 @@ thread.start()
 """
 ws expects json
 type : join,bid,cashout,lobby,crash,state
-name : player name # only for join messages
+name : player name              # only for join messages
 amount : amount of money to bid # only for bid messages
-state: waiting,playing # only for state messages
+state: waiting,bidding,playing  # only for state messages
 """
 
 @app.websocket("/ws")
@@ -82,4 +82,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 amount = message["amount"]
                 for ws in current_players:
                     await ws.send_text(f"{current_players[ws]} bid {amount}.")
+        
+        elif message["type"] == "cashout":
+            
         

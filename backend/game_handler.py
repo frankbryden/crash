@@ -33,7 +33,7 @@ class Game:
     # Maybe make time an input instead and remove dependancy on time library
     def get_multiplicator(self) -> float:
         current_game_duration = (time.time() - self.initial_time)
-        if self.duration < current_game_duration:
+        if self.game_duration < current_game_duration:
             print("Too late, you lose!")
             return 0
         else :

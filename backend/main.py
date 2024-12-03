@@ -29,6 +29,7 @@ class ConnectionManager:
             await connection.send_text(message)
 
 
+manager = ConnectionManager()
 
 game_handler = GameHandler()
 game = game_handler.get_game()
@@ -60,11 +61,12 @@ state: waiting,bidding,playing  # only for state messages
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     
-    await websocket.accept()
+    await manager.connect(websocket)
 
+    # Maybe make this "while True" a "while connected"?
     while True:
         current_players = game_handler.players
-        print("current_players : ",current_players)
+        
         data = await websocket.receive_text()
         message = json.loads(data)
         
@@ -80,9 +82,12 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_text(f"A game is not currently in progress.")
             else:
                 amount = message["amount"]
-                for ws in current_players:
-                    await ws.send_text(f"{current_players[ws]} bid {amount}.")
+                await manager.broadcast(f"{current_players[ws]} bid {amount}.")
         
         elif message["type"] == "cashout":
-            
-        
+            if not game.ongoing:
+                await websocket.send_text(f"A game is not currently in progress.")
+            else:
+                await manager.broadcast(f"{current_players[ws]} cashed out with a mult of {game.get_multiplicator()}!")
+    
+    await manager.disconnect(websocket)

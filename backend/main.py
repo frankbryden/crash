@@ -1,6 +1,5 @@
 from fastapi import FastAPI, WebSocket
 from typing import Union
-from pydantic import BaseModel
 import json
 from threading import Thread, Event
 import asyncio
@@ -105,6 +104,7 @@ async def websocket_endpoint(websocket: WebSocket):
             current_players = game_handler.players
 
             data = await websocket.receive_text()
+            print(data)
             message = json.loads(data)
 
             if message["type"] == "join":

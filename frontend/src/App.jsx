@@ -10,6 +10,7 @@ import 'markdown-it-latex/dist/index.css'
 import Login from './auth/Login';
 import Navbar from './Navbar';
 import CrashCurve from './CrashCurve';
+import { useEffect, useState, useRef } from 'react';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -18,9 +19,32 @@ export default function App() {
 
     const outlet = useOutlet();
 
+    const ws = useRef(null);
     const { token, setToken } = useToken();
     const { email } = useTokenDecoded(token);
 
+    if (email == undefined) {
+        throw new Response("Not authorized", { status: 401 });
+    }
+
+    const wsConnection = useEffect(() => {
+        ws.current = new WebSocket(import.meta.env.VITE_BACKEND_WSL);
+        ws.current.onopen = () => {
+            console.log(`ws opened, sending ${email}`);
+            ws.current.send(JSON.stringify({
+                "type": "join",
+                "name": email,
+            }));
+        };
+        ws.current.onclose = () => console.log("ws closed");
+        ws.current.onmessage = (ev) => console.log(ev);
+
+        const wsCurrent = ws.current;
+
+        return () => {
+            wsCurrent.close();
+        };
+    }, []);
     const leftLinks = [
         {
             name: "Home",

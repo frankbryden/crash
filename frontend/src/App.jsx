@@ -10,6 +10,9 @@ import 'markdown-it-latex/dist/index.css'
 import Login from './auth/Login';
 import Navbar from './Navbar';
 import CrashCurve from './CrashCurve';
+import { useEffect, useState, useRef } from 'react';
+import { getRandomName } from './utils/names';
+import Lobby from './Lobby';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -18,9 +21,47 @@ export default function App() {
 
     const outlet = useOutlet();
 
+    const ws = useRef(null);
     const { token, setToken } = useToken();
     const { email } = useTokenDecoded(token);
+    const [players, setPlayers] = useState([]);
+    const [gameState, setGameState] = useState("");
 
+    if (email == undefined) {
+        throw new Response("Not authorized", { status: 401 });
+    }
+
+    const wsConnection = useEffect(() => {
+        ws.current = new WebSocket(import.meta.env.VITE_BACKEND_WSL);
+        ws.current.onopen = () => {
+            console.log(`ws opened, sending ${email}`);
+            ws.current.send(JSON.stringify({
+                "type": "join",
+                "name": getRandomName(),
+            }));
+        };
+        ws.current.onclose = () => console.log("ws closed");
+        ws.current.onmessage = (ev) => {
+            console.log(`Parsing ${ev.data}`);
+            let event = JSON.parse(ev.data);
+            switch (event.type) {
+                case "join":
+                    setPlayers(event.lobby)
+                    break;
+                case "state":
+                    setGameState(event.state);
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        const wsCurrent = ws.current;
+
+        return () => {
+            wsCurrent.close();
+        };
+    }, []);
     const leftLinks = [
         {
             name: "Home",
@@ -48,9 +89,11 @@ export default function App() {
                             <img src={`/smart_owl.gif`} alt="Smart Owl" className="w-64 h-64" />
                         </div>
                     </div> */}
+                    <h1>{gameState}</h1>
                     <div>
                         <CrashCurve />
                     </div>
+                    <Lobby players={players} />
                 </div >
             }
         </div >

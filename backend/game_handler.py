@@ -3,80 +3,6 @@ import time
 from threading import Lock
 
 
-class Game:
-    def __init__(
-        self,
-        name: str,
-        starting_multiplicator: float = 0.75,
-        multiplicator_coef: float = 0.01,
-        average: float = 30,
-        standard_deviation: float = 10,
-        minimum_time: float = 3,
-        players: list = None,
-    ):
-
-        self.name = name
-
-        self.average = average
-        self.std = standard_deviation
-        self.min_time = minimum_time
-
-        self.ongoing = False
-
-        # Game begins in the waiting state
-        self.waiting_initial_time = time.time()
-
-        self.initial_time = None
-        self.game_duration = None
-        self.starting_multiplicator = starting_multiplicator
-        self.multiplicator_coef = multiplicator_coef
-
-        self.players = players or []
-
-    def start_game(self):
-        if not self.ongoing:
-            self.game_duration = max(
-                self.min_time, np.random.normal(self.average, self.std)
-            )
-            self.ongoing = True
-            self.initial_time = time.time()
-        else:
-            print("Game already started.")
-
-    def reset_game(self):
-        self.ongoing = False
-        self.game_duration = max(
-            self.min_time, np.random.normal(self.average, self.std)
-        )
-
-    # Maybe make time an input instead and remove dependancy on time library
-    def get_multiplicator(self) -> float:
-        current_game_duration = time.time() - self.initial_time
-        if self.game_duration < current_game_duration:
-            print("Too late, you lose!")
-            return 0
-        else:
-            multiplicator = self.starting_multiplicator + np.exp(
-                self.multiplicator_coef * current_game_duration
-            )
-            print(
-                f"The game has been going on for {current_game_duration}. Your multiplicator : {multiplicator}"
-            )
-            return multiplicator
-
-    def is_waiting(self) -> bool:
-        return (time.time() - self.waiting_initial_time) > 30  # 30 seconds wait for now
-
-    def reset_waiting_time(self):
-        self.waiting_initial_time = time.time()
-
-    def is_crashed(self) -> bool:
-        if self.ongoing:
-            return (time.time() - self.initial_time) > self.game_duration
-        else:
-            return False  # Game is not crashed, it has not started
-
-
 class GameHandler:
 
     def __init__(
@@ -98,6 +24,9 @@ class GameHandler:
 
         self.players = {}  # ws : name
 
+        self.cash = {}  # ws : cash
+
+        # For concurrent access
         self.mutex = Lock()
 
     # only for some testing
@@ -109,7 +38,7 @@ class GameHandler:
         )
         return duration, multiplicator_array
 
-    def get_game(self, name: str = "New Game") -> Game:
+    def get_game(self, name: str = "New Game"):
 
         return Game(
             name,
@@ -118,11 +47,107 @@ class GameHandler:
             average=self.average,
             standard_deviation=self.std,
             minimum_time=self.min_time,
+            game_handler_parent=self,
         )
 
     def join(self, ws, name):
         with self.mutex:
             self.players[ws] = name
+
+            if ws not in self.cash:
+                self.cash[ws] = 1000
+
+
+class Game:
+    def __init__(
+        self,
+        name: str,
+        starting_multiplicator: float = 0.75,
+        multiplicator_coef: float = 0.01,
+        average: float = 30,
+        standard_deviation: float = 10,
+        minimum_time: float = 3,
+        game_handler_parent: GameHandler = None,
+    ):
+
+        self.name = name
+
+        self.average = average
+        self.std = standard_deviation
+        self.min_time = minimum_time
+
+        self.ongoing = False
+
+        # Game begins in the waiting state
+        self.waiting_initial_time = time.time()
+
+        self.initial_time = None
+        self.game_duration = None
+        self.starting_multiplicator = starting_multiplicator
+        self.multiplicator_coef = multiplicator_coef
+
+        self.game_handler_parent = game_handler_parent
+
+        self.bids = {}  # ws : bid
+
+    def start_game(self):
+        if not self.ongoing:
+            self.game_duration = max(
+                self.min_time, np.random.normal(self.average, self.std)
+            )
+            self.ongoing = True
+            self.initial_time = time.time()
+        else:
+            print("Game already started.")
+
+    def reset_game(self):
+        self.ongoing = False
+        self.game_duration = max(
+            self.min_time, np.random.normal(self.average, self.std)
+        )
+
+    def bid(self, ws, amount):
+        cash_available = self.game_handler_parent.cash[ws]
+        bid_amount = min(amount, cash_available)
+
+        # Players can only bid once
+        if ws not in self.bids and bid_amount > 0:
+            self.bids[ws] = bid_amount
+            self.game_handler_parent.cash[ws] -= bid_amount
+
+    # Maybe make time an input instead and remove dependancy on time library
+    def get_multiplicator(self) -> float:
+        current_game_duration = time.time() - self.initial_time
+        if self.game_duration < current_game_duration:
+            print("Too late, you lose!")
+            return 0
+        else:
+            multiplicator = self.starting_multiplicator + np.exp(
+                self.multiplicator_coef * current_game_duration
+            )
+            print(
+                f"The game has been going on for {current_game_duration}. Your multiplicator : {multiplicator}"
+            )
+            return multiplicator
+
+    def cashout(self, ws):
+        if ws in self.bids:
+            gain = self.get_multiplicator() * self.bids[ws]
+            self.bids.pop(ws)
+            self.game_handler_parent.cash[ws] += gain
+            return gain
+
+    def is_waiting(self) -> bool:
+        return (time.time() - self.waiting_initial_time) < 10  # 10 seconds wait for now
+
+    def reset_waiting_time(self):
+        self.waiting_initial_time = time.time()
+
+    def is_crashed(self) -> bool:
+        if self.ongoing:
+            return (time.time() - self.initial_time) > self.game_duration
+        else:
+            return False  # Game is not crashed, it has not started
 
 
 if __name__ == "__main__":

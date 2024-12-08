@@ -31,6 +31,7 @@ export default function App() {
     const { errorQueue, addError } = useErrorQueue();
     const { email } = useTokenDecoded(token);
     const [players, setPlayers] = useState([]);
+    const [points, setPoints] = useState([]);
     const [bids, setBids] = useState({});
     const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
@@ -58,6 +59,9 @@ export default function App() {
                     break;
                 case "state":
                     setGameState(event.state);
+                    if (event.state == "playing") {
+                        setPoints([]);
+                    }
                     break;
                 case "bid":
                     setBids(event.bids);
@@ -65,6 +69,11 @@ export default function App() {
                     break;
                 case "error":
                     addError(event.message);
+                    break;
+                case "mult":
+                    if (event.mult > 0) {
+                        setPoints(points => [...points, event.mult]);
+                    }
                     break;
                 default:
                     break;
@@ -128,7 +137,7 @@ export default function App() {
                     </div> */}
                     <h1>{gameState}</h1>
                     <div>
-                        <CrashCurve />
+                        <CrashCurve points={points} />
                     </div>
                     <Lobby players={players} />
                     <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />

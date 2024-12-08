@@ -2,29 +2,22 @@ import { CssSyntaxError } from "postcss";
 import { useEffect, useRef } from "react";
 
 const BORDER_MARGIN = 2;
+const TARGET_POINTS_X = 500;
+const DEFAULT_MAX_MULT = 6;
+const PADDING = 20;
 
-export default function CrashCurve() {
+export default function CrashCurve({ points: mults }) {
     const canvasRef = useRef(null);
     const animationIdRef = useRef(null);
+    const lastMult = mults[mults.length - 1];
+    const yDelta = lastMult - mults[0];
 
-    // let [playerPos, setPlayerPos] = useState({ x: 10, y: 10 });
-    let playerPos = { x: 10, y: 10 };
-    let timeFrame = 0;
-    let start;
-
-    function f(x) {
-        return (1.2 ** x) / (1.19 ** x);
+    function scalePoint(number, height) {
+        return (number - mults[0]) * height / Math.max(lastMult, DEFAULT_MAX_MULT);
     }
 
-    function update(timestamp) {
-        if (start === undefined) {
-            start = timestamp;
-        }
-        animationIdRef.current = requestAnimationFrame(update);
-        playerPos.x += 1;
-        playerPos.y += 0.5;
-
-        const canvas = canvasRef.current;
+    const canvas = canvasRef.current;
+    if (canvas != null) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -33,34 +26,28 @@ export default function CrashCurve() {
         ctx.rect(BORDER_MARGIN, BORDER_MARGIN, canvas.width - 2 * BORDER_MARGIN, canvas.height - 2 * BORDER_MARGIN);
         ctx.stroke();
 
-        ctx.beginPath();
-        let lastPoint = canvas.height - f(0);
-        ctx.moveTo(0, lastPoint);
-        for (let x = 1; x < (timestamp - start) / 10; x++) {
-            lastPoint = canvas.height - f(x);
-            ctx.lineTo(x, lastPoint);
+        if (lastMult > 0) {
+            ctx.font = "50px serif";
+            ctx.fillText(`x${lastMult}`, 20, 50);
         }
-        // ctx.arc(playerPos.x, playerPos.y, 10, 0, 2 * Math.PI, false);
+
+        ctx.beginPath();
+        // Go to (0, 0) with a flipped y-axis
+        let lastPoint = canvas.height - scalePoint(mults[0], canvas.height - PADDING);
+        ctx.moveTo(0, lastPoint);
+
+        for (let index = 1; index < mults.length; index++) {
+            lastPoint = canvas.height - scalePoint(mults[index], canvas.height - PADDING);
+            let x;
+            if (mults.length > TARGET_POINTS_X) {
+                x = 1 / mults.length;
+            } else {
+                x = 1 / TARGET_POINTS_X;
+            }
+            ctx.lineTo(x * index * (canvas.width - PADDING), lastPoint);
+        }
         ctx.stroke();
     }
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        // const parent = canvas.parentNode;
-        // const width = parent.clientWidth;
-        // const height = parent.clientHeight;
-
-        // // Set canvas dimensions to match CSS size
-        // canvas.width = width;
-        // canvas.height = height;
-
-        animationIdRef.current = requestAnimationFrame(update);
-        console.log("Animation frame requested");
-        return () => {
-            console.log("Cancel animation");
-            cancelAnimationFrame(animationIdRef.current);
-        }
-    }, []);
 
 
     return (

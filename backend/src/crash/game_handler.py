@@ -12,7 +12,7 @@ class GameHandler:
         standard_deviation: float = 10,
         minimum_time: float = 3,
         starting_multiplicator: float = 0.75,
-        multiplicator_coef: float = 0.01,
+        multiplicator_coef: float = 0.1,
     ):
         self.name = name
         self.average = average
@@ -42,7 +42,6 @@ class GameHandler:
 
         return Game(
             name,
-            starting_multiplicator=self.starting_multiplicator,
             multiplicator_coef=self.multiplicator_coef,
             average=self.average,
             standard_deviation=self.std,
@@ -62,7 +61,6 @@ class Game:
     def __init__(
         self,
         name: str,
-        starting_multiplicator: float = 0.75,
         multiplicator_coef: float = 0.01,
         average: float = 30,
         standard_deviation: float = 10,
@@ -83,7 +81,6 @@ class Game:
 
         self.initial_time = None
         self.game_duration = None
-        self.starting_multiplicator = starting_multiplicator
         self.multiplicator_coef = multiplicator_coef
 
         self.game_handler_parent = game_handler_parent
@@ -121,9 +118,7 @@ class Game:
         if self.game_duration < current_game_duration:
             return 0
         else:
-            multiplicator = self.starting_multiplicator + np.exp(
-                self.multiplicator_coef * current_game_duration
-            )
+            multiplicator = np.exp(self.multiplicator_coef * current_game_duration)
             return np.round(multiplicator, decimals=2)
 
     def cashout(self, ws):

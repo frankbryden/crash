@@ -13,6 +13,7 @@ import CrashCurve from './CrashCurve';
 import { useEffect, useState, useRef } from 'react';
 import { getRandomName } from './utils/names';
 import Lobby from './Lobby';
+import Bidding from './Bidding';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -51,6 +52,9 @@ export default function App() {
                 case "state":
                     setGameState(event.state);
                     break;
+                case "bid":
+                    console.log(event);
+                    break;
                 default:
                     break;
             }
@@ -79,6 +83,17 @@ export default function App() {
         }
     ];
 
+    function makeBid(bidAmount) {
+        if (ws == null) {
+            return;
+        }
+        const wsCurrent = ws.current;
+        wsCurrent.send(JSON.stringify({
+            "type": "bid",
+            "amount": parseInt(bidAmount),
+        }));
+    }
+
     return (
         <div className="min-h-screen">
             <Navbar leftLinks={leftLinks} rightLinks={rightLinks} />
@@ -94,6 +109,7 @@ export default function App() {
                         <CrashCurve />
                     </div>
                     <Lobby players={players} />
+                    <Bidding bidFunc={makeBid} />
                 </div >
             }
         </div >

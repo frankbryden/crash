@@ -12,7 +12,7 @@ class GameHandler:
         standard_deviation: float = 10,
         minimum_time: float = 3,
         starting_multiplicator: float = 0.75,
-        multiplicator_coef: float = 0.01,
+        multiplicator_coef: float = 0.1,
     ):
         self.name = name
         self.average = average
@@ -42,7 +42,6 @@ class GameHandler:
 
         return Game(
             name,
-            starting_multiplicator=self.starting_multiplicator,
             multiplicator_coef=self.multiplicator_coef,
             average=self.average,
             standard_deviation=self.std,
@@ -62,7 +61,6 @@ class Game:
     def __init__(
         self,
         name: str,
-        starting_multiplicator: float = 0.75,
         multiplicator_coef: float = 0.01,
         average: float = 30,
         standard_deviation: float = 10,
@@ -83,7 +81,6 @@ class Game:
 
         self.initial_time = None
         self.game_duration = None
-        self.starting_multiplicator = starting_multiplicator
         self.multiplicator_coef = multiplicator_coef
 
         self.game_handler_parent = game_handler_parent
@@ -119,16 +116,10 @@ class Game:
     def get_multiplicator(self) -> float:
         current_game_duration = time.time() - self.initial_time
         if self.game_duration < current_game_duration:
-            print("Too late, you lose!")
             return 0
         else:
-            multiplicator = self.starting_multiplicator + np.exp(
-                self.multiplicator_coef * current_game_duration
-            )
-            print(
-                f"The game has been going on for {current_game_duration}. Your multiplicator : {multiplicator}"
-            )
-            return multiplicator
+            multiplicator = np.exp(self.multiplicator_coef * current_game_duration)
+            return np.round(multiplicator, decimals=2)
 
     def cashout(self, ws):
         if ws in self.bids:
@@ -137,6 +128,23 @@ class Game:
             self.game_handler_parent.cash[ws] += gain
             return gain
 
+    def get_cash_vaults(self, current_players: dict) -> dict:
+        cash_dict = {}
+        for ws in current_players:
+            if ws in self.game_handler_parent.cash:
+                cash_dict[current_players[ws]] = self.game_handler_parent.cash[ws]
+
+        return cash_dict
+
+    def get_bids(self, current_players: dict) -> dict:
+        bids_dict = {}
+        for ws in current_players:
+            if ws in self.bids:
+                bids_dict[current_players[ws]] = self.bids[ws]
+
+        return bids_dict
+
+    # States management
     def is_waiting(self) -> bool:
         return (time.time() - self.waiting_initial_time) < 10  # 10 seconds wait for now
 

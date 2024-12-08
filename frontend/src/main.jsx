@@ -1,7 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import { ReactQueryDevtools } from 'react-query/devtools';
 import './index.css'
 import {
     QueryClient,
@@ -44,7 +43,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <QueryClientProvider client={queryClient}>
             <RouterProvider router={router} />
-            <ReactQueryDevtools initialIsOpen={false} />
         </QueryClientProvider>
     </React.StrictMode>,
 )

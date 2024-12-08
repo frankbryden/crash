@@ -14,6 +14,8 @@ import { useEffect, useState, useRef } from 'react';
 import { getRandomName } from './utils/names';
 import Lobby from './Lobby';
 import Bidding from './Bidding';
+import NumbersTable from './NumbersTable';
+import FancyButton from './FancyButton';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -26,6 +28,8 @@ export default function App() {
     const { token, setToken } = useToken();
     const { email } = useTokenDecoded(token);
     const [players, setPlayers] = useState([]);
+    const [bids, setBids] = useState({});
+    const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
 
     if (email == undefined) {
@@ -54,6 +58,8 @@ export default function App() {
                     break;
                 case "bid":
                     console.log(event);
+                    setBids(event.bids);
+                    setCashVaults(event.cash_vaults);
                     break;
                 default:
                     break;
@@ -94,6 +100,17 @@ export default function App() {
         }));
     }
 
+    function cashout() {
+        if (ws == null) {
+            return;
+        }
+        const wsCurrent = ws.current;
+        wsCurrent.send(JSON.stringify({
+            "type": "cashout",
+        }));
+
+    }
+
     return (
         <div className="min-h-screen">
             <Navbar leftLinks={leftLinks} rightLinks={rightLinks} />
@@ -109,7 +126,10 @@ export default function App() {
                         <CrashCurve />
                     </div>
                     <Lobby players={players} />
+                    <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />
+                    <NumbersTable title="Cash vaults" keyColTitle="Player" valColTitle="Value" mapping={cashVaults} />
                     <Bidding bidFunc={makeBid} />
+                    <FancyButton name={"Cashout"} onClick={cashout} />
                 </div >
             }
         </div >

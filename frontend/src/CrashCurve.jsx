@@ -23,7 +23,6 @@ export default function CrashCurve() {
         animationIdRef.current = requestAnimationFrame(update);
         playerPos.x += 1;
         playerPos.y += 0.5;
-        // console.log(playerPos);
 
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");

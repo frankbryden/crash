@@ -7,7 +7,7 @@ dev-front: start
 
 dev-back: start
 	docker compose down backend
-	cd backend && python -m fastapi run main.py
+	cd backend && python -m fastapi run src/crash/main.py
 
 build:
 	docker compose build

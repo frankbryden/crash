@@ -51,11 +51,16 @@ async def loop():
 
         if len(current_players) > 0 and not game.is_waiting() and not game.ongoing:
             game.start_game()
-            await manager.broadcast_lobby({"type": "state", "state": "starting"})
+            await manager.broadcast_lobby({"type": "state", "state": "playing"})
+
+        # Send the multiplicator to be drawn
+        elif not game.is_waiting() and game.ongoing:
+            await manager.broadcast_lobby(
+                {"type": "mult", "mult": game.get_multiplicator()}
+            )
 
         elif game.is_waiting():
             await manager.broadcast_lobby({"type": "state", "state": "waiting"})
-            time.sleep(1)
 
         if game.is_crashed():
             game.reset_game()
@@ -66,6 +71,9 @@ async def loop():
         # Clear the event so that we can set it again
         # next time a player joins an empty lobby
         player_join_event.clear()
+
+        # TODO: remove sleep and make loop loose by using events
+        time.sleep(0.02)
 
 
 def run_async_loop():
@@ -116,11 +124,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 name = message["name"]
                 game_handler.join(websocket, name)
+
+                # Broadcast the lobby state to everyone
                 await manager.broadcast_lobby(
                     {
                         "type": "join",
                         "target": name,
                         "lobby": list(current_players.values()),
+                        "cash_vaults": game.get_cash_vaults(current_players),
+                        "bids": game.get_bids(current_players),
+                        "state": "waiting" if game.is_waiting() else "playing",
                     }
                 )
 
@@ -133,22 +146,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 else:
                     amount = message["amount"]
                     game.bid(websocket, amount)
+
                     # TODO: find a way to avoid recomputing the whole dicts each time a player makes a bid
-                    bids_dict = {}
-                    for ws in current_players:
-                        if ws in game.bids:
-                            bids_dict[current_players[ws]] = game.bids[ws]
-                    cash_dict = {}
-                    for ws in current_players:
-                        if ws in game_handler.cash:
-                            cash_dict[current_players[ws]] = game_handler.cash[ws]
                     await manager.broadcast_lobby(
                         {
                             "type": "bid",
                             "target": current_players[websocket],
                             "amount": amount,
-                            "bids": bids_dict,
-                            "cash_vaults": cash_dict,
+                            "bids": game.get_bids(current_players),
+                            "cash_vaults": game.get_cash_vaults(current_players),
                         }
                     )
 
@@ -159,16 +165,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                 else:
                     gains = game.cashout(websocket)
-                    for ws in current_players:
-                        if ws in game_handler.cash:
-                            cash_dict[current_players[ws]] = game_handler.cash[ws]
+
                     await manager.broadcast_lobby(
                         {
                             "type": "cashout",
                             "target": current_players[websocket],
                             "mult": game.get_multiplicator(),
                             "gains": gains,
-                            "cash_vaults": cash_dict,
+                            "cash_vaults": game.get_cash_vaults(current_players),
                         }
                     )
 
@@ -182,6 +186,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 "type": "leave",
                 "target": current_players[websocket],
                 "lobby": new_player_list,
+                "bids": game.get_bids(current_players),
+                "cash_vaults": game.get_cash_vaults(current_players),
             }
         )
         del game_handler.players[websocket]  # delete the player from the lobby

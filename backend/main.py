@@ -135,11 +135,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     game.bid(websocket, amount)
                     # TODO: find a way to avoid recomputing the whole dicts each time a player makes a bid
                     bids_dict = {}
-                    for ws in game.bids:
-                        bids_dict[current_players[ws]] = game.bids[ws]
+                    for ws in current_players:
+                        if ws in game.bids:
+                            bids_dict[current_players[ws]] = game.bids[ws]
                     cash_dict = {}
-                    for ws in game_handler.cash:
-                        cash_dict[current_players[ws]] = game_handler.cash[ws]
+                    for ws in current_players:
+                        if ws in game_handler.cash:
+                            cash_dict[current_players[ws]] = game_handler.cash[ws]
                     await manager.broadcast_lobby(
                         {
                             "type": "bid",
@@ -157,8 +159,9 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                 else:
                     gains = game.cashout(websocket)
-                    for ws in game_handler.cash:
-                        cash_dict[current_players[ws]] = game_handler.cash[ws]
+                    for ws in current_players:
+                        if ws in game_handler.cash:
+                            cash_dict[current_players[ws]] = game_handler.cash[ws]
                     await manager.broadcast_lobby(
                         {
                             "type": "cashout",

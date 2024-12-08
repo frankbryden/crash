@@ -1,3 +1,5 @@
 .vscode
 data
 venv
+backend/**/*.egg-info
+backend/**/__pycache__

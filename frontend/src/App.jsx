@@ -16,6 +16,8 @@ import Lobby from './Lobby';
 import Bidding from './Bidding';
 import NumbersTable from './NumbersTable';
 import FancyButton from './FancyButton';
+import Error from './Error';
+import useErrorQueue from './utils/useErrorQueue';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -26,6 +28,7 @@ export default function App() {
 
     const ws = useRef(null);
     const { token, setToken } = useToken();
+    const { errorQueue, addError } = useErrorQueue();
     const { email } = useTokenDecoded(token);
     const [players, setPlayers] = useState([]);
     const [bids, setBids] = useState({});
@@ -57,9 +60,11 @@ export default function App() {
                     setGameState(event.state);
                     break;
                 case "bid":
-                    console.log(event);
                     setBids(event.bids);
                     setCashVaults(event.cash_vaults);
+                    break;
+                case "error":
+                    addError(event.message);
                     break;
                 default:
                     break;
@@ -130,6 +135,8 @@ export default function App() {
                     <NumbersTable title="Cash vaults" keyColTitle="Player" valColTitle="Value" mapping={cashVaults} />
                     <Bidding bidFunc={makeBid} />
                     <FancyButton name={"Cashout"} onClick={cashout} />
+                    {/* Errors */}
+                    {errorQueue.map((error, index) => <Error key={index} message={error} />)}
                 </div >
             }
         </div >

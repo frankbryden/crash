@@ -1,10 +1,9 @@
 FROM python:3.12
 
 WORKDIR /app
+COPY pyproject.toml .
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY src src
+RUN pip install .
 
-COPY *.py .
-
-CMD python -m fastapi run main.py
+CMD python -m fastapi run src/crash/main.py

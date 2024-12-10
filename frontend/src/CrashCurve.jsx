@@ -42,7 +42,7 @@ export default function CrashCurve({ points: mults }) {
 
         if (lastMult > 0) {
             ctx.font = "50px Brush Script MT";
-            ctx.fillText(`x${lastMult}`, 20, 50);
+            ctx.fillText(`x${lastMult}`, 25, 50);
         }
 
         const ticks = getYTicks(ctx);

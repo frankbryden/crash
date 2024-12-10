@@ -1,19 +1,33 @@
-import { CssSyntaxError } from "postcss";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 
 const BORDER_MARGIN = 2;
 const TARGET_POINTS_X = 500;
-const DEFAULT_MAX_MULT = 6;
+const DEFAULT_MAX_MULT = 4;
 const PADDING = 20;
+const NUMBER_OF_TICKS = 6;
 
 export default function CrashCurve({ points: mults }) {
     const canvasRef = useRef(null);
-    const animationIdRef = useRef(null);
     const lastMult = mults[mults.length - 1];
-    const yDelta = lastMult - mults[0];
+    const currentYAxisMax = Math.max(lastMult, DEFAULT_MAX_MULT);
 
     function scalePoint(number, height) {
-        return (number - mults[0]) * height / Math.max(lastMult, DEFAULT_MAX_MULT);
+        return (number - mults[0]) * height / currentYAxisMax;
+    }
+
+    function getYTicks(ctx) {
+        const highestTickVal = Math.floor(currentYAxisMax - (currentYAxisMax % 2));
+        const tickStep = highestTickVal / NUMBER_OF_TICKS;
+        const pointWithCurrentHighestTick = mults.slice(mults.length / 2).find((mult) => mult > highestTickVal);
+        let ticks = [];
+        for (let tick = 0; tick <= NUMBER_OF_TICKS * tickStep; tick += tickStep) {
+            if (tick < 10) {
+                ticks.push(Math.trunc(tick) + (Math.round(tick * 10) - Math.trunc(tick) * 10) / 10);
+            } else {
+                ticks.push(Math.round(tick));
+            }
+        }
+        return ticks;
     }
 
     const canvas = canvasRef.current;
@@ -27,9 +41,14 @@ export default function CrashCurve({ points: mults }) {
         ctx.stroke();
 
         if (lastMult > 0) {
-            ctx.font = "50px serif";
-            ctx.fillText(`x${lastMult}`, 20, 50);
+            ctx.font = "50px Brush Script MT";
+            ctx.fillText(`x${lastMult}`, 25, 50);
         }
+
+        const ticks = getYTicks(ctx);
+        let tickIndex = 0;
+        // Object to keep track of where the y-axis ticks need to go
+        let ticksGeometry = new Map();
 
         ctx.beginPath();
         // Go to (0, 0) with a flipped y-axis
@@ -45,8 +64,25 @@ export default function CrashCurve({ points: mults }) {
                 x = 1 / TARGET_POINTS_X;
             }
             ctx.lineTo(x * index * (canvas.width - PADDING), lastPoint);
+
+            // y-axis tick logic
+            if (mults[index] > ticks[tickIndex]) {
+                ticksGeometry.set(ticks[tickIndex], lastPoint);
+                tickIndex++;
+            }
         }
         ctx.stroke();
+
+        // Render y-axis
+        ticksGeometry.forEach((tickY, tickLabel) => {
+            ctx.beginPath();
+            ctx.moveTo(0, tickY);
+            ctx.lineTo(10, tickY);
+            ctx.stroke();
+            ctx.font = "12px Brush Script MT";
+            ctx.fillText(tickLabel, 11, tickY + 5);
+        });
+
     }
 
 

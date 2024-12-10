@@ -51,7 +51,6 @@ export default function App() {
         };
         ws.current.onclose = () => console.log("ws closed");
         ws.current.onmessage = (ev) => {
-            console.log(`Parsing ${ev.data}`);
             let event = JSON.parse(ev.data);
             switch (event.type) {
                 case "join":

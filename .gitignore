@@ -3,3 +3,4 @@ data
 venv
 backend/**/*.egg-info
 backend/**/__pycache__
+frontend/public

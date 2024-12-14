@@ -62,6 +62,7 @@ export default function App() {
                     setGameState(event.state);
                     if (event.state == "playing") {
                         setPoints([]);
+                        setCashoutData([]);
                     }
                     break;
                 case "bid":

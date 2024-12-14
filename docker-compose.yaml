@@ -11,7 +11,7 @@ services:
     image: backend
     build:
       context: backend
-      # target: production
+    stop_grace_period: 1s
     ports:
       - "0.0.0.0:8000:8000"
   db:

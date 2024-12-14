@@ -110,6 +110,7 @@ class Game:
 
     def reset_game(self):
         self.ongoing = False
+        self.players = {}
         self.game_duration = max(
             self.min_time, np.random.normal(self.average, self.std)
         )
@@ -137,7 +138,7 @@ class Game:
             return np.round(multiplicator, decimals=2)
 
     def cashout(self, ws) -> Cashout:
-        if ws in self.players:
+        if ws in self.players and not self.players[ws].cashout_record:
             mult = self.get_multiplicator()
             cashout = self.players[ws].cashout(mult)
             self.game_handler_parent.cash[ws] += cashout.gain

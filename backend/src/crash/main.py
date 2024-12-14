@@ -166,16 +166,17 @@ async def websocket_endpoint(websocket: WebSocket):
                 else:
                     cashout = game.cashout(websocket)
 
-                    await manager.broadcast_lobby(
-                        {
-                            "type": "cashout",
-                            "target": current_players[websocket].name,
-                            "mult": cashout.mult,
-                            "gains": cashout.gain,
-                            "cash_vaults": game.get_cash_vaults(current_players),
-                            "cashouts": game.get_cashouts(),
-                        }
-                    )
+                    if cashout:
+                        await manager.broadcast_lobby(
+                            {
+                                "type": "cashout",
+                                "target": current_players[websocket].name,
+                                "mult": cashout.mult,
+                                "gains": cashout.gain,
+                                "cash_vaults": game.get_cash_vaults(current_players),
+                                "cashouts": game.get_cashouts(),
+                            }
+                        )
 
     except WebSocketDisconnect:
 

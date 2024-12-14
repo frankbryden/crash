@@ -1,6 +1,11 @@
 import numpy as np
 import time
+from typing import Tuple, Dict
+from fastapi import WebSocket
 from threading import Lock
+
+from crash.player import PlayingPlayer, Player
+from crash.records import Cashout, CashoutMessage
 
 
 class GameHandler:
@@ -22,9 +27,9 @@ class GameHandler:
         self.starting_multiplicator = starting_multiplicator
         self.multiplicator_coef = multiplicator_coef
 
-        self.players = {}  # ws : name
+        self.players: Dict[WebSocket, Player] = {}
 
-        self.cash = {}  # ws : cash
+        self.cash: Dict[WebSocket:int] = {}
 
         # For concurrent access
         self.mutex = Lock()
@@ -42,6 +47,7 @@ class GameHandler:
 
         return Game(
             name,
+            self.players,
             multiplicator_coef=self.multiplicator_coef,
             average=self.average,
             standard_deviation=self.std,
@@ -51,7 +57,7 @@ class GameHandler:
 
     def join(self, ws, name):
         with self.mutex:
-            self.players[ws] = name
+            self.players[ws] = Player(name, 1000)
 
             if ws not in self.cash:
                 self.cash[ws] = 1000
@@ -61,6 +67,7 @@ class Game:
     def __init__(
         self,
         name: str,
+        players: Dict[WebSocket, Player],
         multiplicator_coef: float = 0.01,
         average: float = 30,
         standard_deviation: float = 10,
@@ -85,17 +92,21 @@ class Game:
 
         self.game_handler_parent = game_handler_parent
 
-        self.bids = {}  # ws : bid
+        self.players: Dict[WebSocket, PlayingPlayer] = {
+            ws: PlayingPlayer(player.name) for ws, player in players.items()
+        }
 
-    def start_game(self):
+    def start_game(self) -> bool:
         if not self.ongoing:
             self.game_duration = max(
                 self.min_time, np.random.normal(self.average, self.std)
             )
             self.ongoing = True
             self.initial_time = time.time()
+            return True
         else:
             print("Game already started.")
+            return False
 
     def reset_game(self):
         self.ongoing = False
@@ -107,9 +118,13 @@ class Game:
         cash_available = self.game_handler_parent.cash[ws]
         bid_amount = min(amount, cash_available)
 
+        # Was player not here at round start?
+        if ws not in self.players:
+            # Player is created and added to the round
+            self.players[ws] = PlayingPlayer(self.game_handler_parent.players[ws].name)
+
         # Players can only bid once
-        if ws not in self.bids and bid_amount > 0:
-            self.bids[ws] = bid_amount
+        if self.players[ws].bid(bid_amount):
             self.game_handler_parent.cash[ws] -= bid_amount
 
     # Maybe make time an input instead and remove dependancy on time library
@@ -121,28 +136,38 @@ class Game:
             multiplicator = np.exp(self.multiplicator_coef * current_game_duration)
             return np.round(multiplicator, decimals=2)
 
-    def cashout(self, ws):
-        if ws in self.bids:
-            gain = self.get_multiplicator() * self.bids[ws]
-            self.bids.pop(ws)
-            self.game_handler_parent.cash[ws] += gain
-            return gain
+    def cashout(self, ws) -> Cashout:
+        if ws in self.players:
+            mult = self.get_multiplicator()
+            cashout = self.players[ws].cashout(mult)
+            self.game_handler_parent.cash[ws] += cashout.gain
+            return cashout
 
-    def get_cash_vaults(self, current_players: dict) -> dict:
+    def get_cash_vaults(self, current_players: dict) -> Dict[str, int]:
         cash_dict = {}
         for ws in current_players:
             if ws in self.game_handler_parent.cash:
-                cash_dict[current_players[ws]] = self.game_handler_parent.cash[ws]
+                cash_dict[current_players[ws].name] = self.game_handler_parent.cash[ws]
 
         return cash_dict
 
-    def get_bids(self, current_players: dict) -> dict:
+    def get_bids(self, current_players: dict) -> Dict[str, int]:
         bids_dict = {}
         for ws in current_players:
-            if ws in self.bids:
-                bids_dict[current_players[ws]] = self.bids[ws]
+            if ws in self.players:
+                bids_dict[current_players[ws].name] = self.players[ws].bid_value
 
         return bids_dict
+
+    def get_cashouts(self) -> Dict[str, CashoutMessage]:
+        return {
+            player.name: {
+                "bid": player.bid_value,
+                "gain": getattr(player.cashout_record, "gain", -1),
+                "mult": getattr(player.cashout_record, "mult", -1),
+            }
+            for player in self.players.values()
+        }
 
     # States management
     def is_waiting(self) -> bool:

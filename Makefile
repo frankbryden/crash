@@ -15,3 +15,6 @@ build:
 precommit:
 	pip install pre-commit
 	pre-commit install
+
+mongo:
+	docker exec -it mongo mongosh crash

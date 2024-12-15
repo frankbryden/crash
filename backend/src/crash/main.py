@@ -4,6 +4,7 @@ import json
 from threading import Thread, Event, Lock
 import asyncio
 import time
+from pymongo import MongoClient
 
 from crash.game_handler import GameHandler
 from crash.utils import run_async_in_thread
@@ -34,6 +35,11 @@ class ConnectionManager:
             for connection in self.active_connections:
                 await connection.send_text(json.dumps(message))
 
+
+# Connect to Mongo, get db and the player collection
+mongo_client = MongoClient("db", 27017)
+db = mongo_client.crash
+players_collection = db.players
 
 manager = ConnectionManager()
 
@@ -135,8 +141,28 @@ async def websocket_endpoint(websocket: WebSocket):
                     player_join_event.set()
                     game.reset_waiting_time()
 
+                # Name will be google id string later
                 name = message["name"]
-                game_handler.join(websocket, name)
+
+                player_info = players_collection.find_one({"name": name})
+                # Check if player is in the db
+                if player_info == None:
+                    # If not, we create their doc
+                    cash = 1000
+                    player_id = players_collection.insert_one(
+                        {
+                            "name": name,
+                            "cash": cash,
+                            "bid_history": [],
+                            "gain_history": [],
+                        }
+                    )
+                    print("Player added to db with id :", player_id)
+
+                else:
+                    cash = player_info["cash"]
+
+                game_handler.join(websocket, name, cash)
 
                 # Broadcast the lobby state to everyone
                 await manager.broadcast_lobby(
@@ -194,15 +220,21 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
 
         manager.disconnect(websocket)
-        new_player_list = list(current_players.values())
-        new_player_list.remove(current_players[websocket])
+        new_player_list = [player.name for player in current_players.values()]
+        new_player_list.remove(current_players[websocket].name)
+        print("new lobby list : ", new_player_list)
         await manager.broadcast_lobby(
             {
                 "type": "leave",
-                "target": current_players[websocket],
+                "target": current_players[websocket].name,
                 "lobby": new_player_list,
                 "bids": game.get_bids(current_players),
                 "cash_vaults": game.get_cash_vaults(current_players),
             }
+        )
+        # Update the information in the db
+        players_collection.update_one(
+            {"name": current_players[websocket].name},
+            {"$set": {"cash": current_players[websocket].cash}},
         )
         del game_handler.players[websocket]  # delete the player from the lobby

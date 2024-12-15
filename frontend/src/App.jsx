@@ -18,6 +18,7 @@ import NumbersTable from './NumbersTable';
 import FancyButton from './FancyButton';
 import Error from './Error';
 import useErrorQueue from './utils/useErrorQueue';
+import CashoutTable from './CashoutTable';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -35,6 +36,7 @@ export default function App() {
     const [bids, setBids] = useState({});
     const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
+    const [cashoutData, setCashoutData] = useState([]);
 
     if (email == undefined) {
         throw new Response("Not authorized", { status: 401 });
@@ -60,6 +62,7 @@ export default function App() {
                     setGameState(event.state);
                     if (event.state == "playing") {
                         setPoints([]);
+                        setCashoutData([]);
                     }
                     break;
                 case "bid":
@@ -73,6 +76,9 @@ export default function App() {
                     if (event.mult > 0) {
                         setPoints(points => [...points, event.mult]);
                     }
+                    break;
+                case "cashout":
+                    setCashoutData(event.cashouts);
                     break;
                 default:
                     break;
@@ -141,6 +147,7 @@ export default function App() {
                     <Lobby players={players} />
                     <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />
                     <NumbersTable title="Cash vaults" keyColTitle="Player" valColTitle="Value" mapping={cashVaults} />
+                    <CashoutTable rows={cashoutData} />
                     <Bidding bidFunc={makeBid} />
                     <FancyButton name={"Cashout"} onClick={cashout} />
                     {/* Errors */}

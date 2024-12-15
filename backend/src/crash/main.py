@@ -130,7 +130,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     {
                         "type": "join",
                         "target": name,
-                        "lobby": list(current_players.values()),
+                        "lobby": [player.name for player in current_players.values()],
                         "cash_vaults": game.get_cash_vaults(current_players),
                         "bids": game.get_bids(current_players),
                         "state": "waiting" if game.is_waiting() else "playing",
@@ -151,7 +151,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     await manager.broadcast_lobby(
                         {
                             "type": "bid",
-                            "target": current_players[websocket],
+                            "target": current_players[websocket].name,
                             "amount": amount,
                             "bids": game.get_bids(current_players),
                             "cash_vaults": game.get_cash_vaults(current_players),
@@ -164,17 +164,19 @@ async def websocket_endpoint(websocket: WebSocket):
                         {"type": "error", "message": "Game has not started."}, websocket
                     )
                 else:
-                    gains = game.cashout(websocket)
+                    cashout = game.cashout(websocket)
 
-                    await manager.broadcast_lobby(
-                        {
-                            "type": "cashout",
-                            "target": current_players[websocket],
-                            "mult": game.get_multiplicator(),
-                            "gains": gains,
-                            "cash_vaults": game.get_cash_vaults(current_players),
-                        }
-                    )
+                    if cashout:
+                        await manager.broadcast_lobby(
+                            {
+                                "type": "cashout",
+                                "target": current_players[websocket].name,
+                                "mult": cashout.mult,
+                                "gains": cashout.gain,
+                                "cash_vaults": game.get_cash_vaults(current_players),
+                                "cashouts": game.get_cashouts(),
+                            }
+                        )
 
     except WebSocketDisconnect:
 

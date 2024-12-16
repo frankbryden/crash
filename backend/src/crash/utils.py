@@ -5,7 +5,7 @@ from threading import Event
 
 def sleep_and_go(duration: int, event: Event):
     """Sleep for `duration` s, then fire the `event`"""
-    time.sleep(duration / 1000.0)
+    time.sleep(duration)
     event.set()
 
 

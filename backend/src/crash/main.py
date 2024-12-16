@@ -1,7 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from typing import Union
 import json
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import asyncio
 import time
 
@@ -13,21 +13,26 @@ app = FastAPI()
 
 class ConnectionManager:
     def __init__(self):
+        self.mutex = Lock()
         self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        with self.mutex:
+            self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        with self.mutex:
+            self.active_connections.remove(websocket)
 
     async def send_personal_message_lobby(self, message: dict, websocket: WebSocket):
-        await websocket.send_text(json.dumps(message))
+        with self.mutex:
+            await websocket.send_text(json.dumps(message))
 
     async def broadcast_lobby(self, message: dict):
-        for connection in self.active_connections:
-            await connection.send_text(json.dumps(message))
+        with self.mutex:
+            for connection in self.active_connections:
+                await connection.send_text(json.dumps(message))
 
 
 manager = ConnectionManager()
@@ -40,9 +45,14 @@ game = game_handler.get_game()
 player_join_event = Event()
 
 
-async def continuously_transmit_mult():
-    await manager.broadcast_lobby({"type": "mult", "mult": game.get_multiplicator()})
-    time.sleep(0.02)
+async def continuously_transmit_mult(stop_event: Event):
+    while True:
+        await manager.broadcast_lobby(
+            {"type": "mult", "mult": game.get_multiplicator()}
+        )
+        time.sleep(0.02)
+        if stop_event.is_set():
+            return
 
 
 # Server loop
@@ -64,7 +74,13 @@ async def loop():
         await manager.broadcast_lobby({"type": "state", "state": "playing"})
 
         # Send the multiplicator to be drawn
-        Thread(target=run_async_in_thread, args=(continuously_transmit_mult,)).start()
+        sender = Thread(
+            target=run_async_in_thread,
+            args=(lambda: continuously_transmit_mult(game.get_crash_event()),),
+        )
+        sender.start()
+
+        # Play until crash
         game.wait_for_crash()
         await manager.broadcast_lobby({"type": "state", "state": "crashed"})
         game.reset_game()

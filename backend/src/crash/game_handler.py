@@ -8,7 +8,7 @@ from crash.player import PlayingPlayer, Player
 from crash.records import Cashout, CashoutMessage
 from crash.utils import sleep_and_go
 
-GAME_WAIT_TIME_S = 10
+GAME_WAIT_TIME_S = 4
 
 
 class GameHandler:
@@ -197,6 +197,9 @@ class Game:
 
     def launch_crash_timer(self):
         sleep_and_go(self.game_duration, self.crash_event)
+
+    def get_crash_event(self):
+        return self.crash_event
 
     def get_crash_event(self):
         return self.crash_event

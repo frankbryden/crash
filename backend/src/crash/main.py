@@ -6,6 +6,7 @@ import asyncio
 import time
 
 from crash.game_handler import GameHandler
+from crash.utils import run_async_in_thread
 
 app = FastAPI()
 
@@ -39,6 +40,11 @@ game = game_handler.get_game()
 player_join_event = Event()
 
 
+async def continuously_transmit_mult():
+    await manager.broadcast_lobby({"type": "mult", "mult": game.get_multiplicator()})
+    time.sleep(0.02)
+
+
 # Server loop
 async def loop():
     while True:
@@ -49,24 +55,19 @@ async def loop():
             print("Waiting for players...")
             player_join_event.wait()
 
-        if len(current_players) > 0 and not game.is_waiting() and not game.ongoing:
-            game.start_game()
-            await manager.broadcast_lobby({"type": "state", "state": "playing"})
+        # Start timer
+        await manager.broadcast_lobby({"type": "state", "state": "waiting"})
+        game.blocking_pre_game_wait()
+
+        # Start the game
+        game.start_game()
+        await manager.broadcast_lobby({"type": "state", "state": "playing"})
 
         # Send the multiplicator to be drawn
-        elif not game.is_waiting() and game.ongoing:
-            await manager.broadcast_lobby(
-                {"type": "mult", "mult": game.get_multiplicator()}
-            )
-
-        elif game.is_waiting():
-            await manager.broadcast_lobby({"type": "state", "state": "waiting"})
-
-        if game.is_crashed():
-            game.reset_game()
-            print("Resetting game!")
-            await manager.broadcast_lobby({"type": "state", "state": "crashed"})
-            game.reset_waiting_time()
+        Thread(target=run_async_in_thread, args=(continuously_transmit_mult,)).start()
+        game.wait_for_crash()
+        await manager.broadcast_lobby({"type": "state", "state": "crashed"})
+        game.reset_game()
 
         # Clear the event so that we can set it again
         # next time a player joins an empty lobby

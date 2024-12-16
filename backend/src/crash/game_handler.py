@@ -2,10 +2,13 @@ import numpy as np
 import time
 from typing import Tuple, Dict
 from fastapi import WebSocket
-from threading import Lock
+from threading import Lock, Event, Thread
 
 from crash.player import PlayingPlayer, Player
 from crash.records import Cashout, CashoutMessage
+from crash.utils import sleep_and_go
+
+GAME_WAIT_TIME_S = 10
 
 
 class GameHandler:
@@ -91,6 +94,9 @@ class Game:
         self.multiplicator_coef = multiplicator_coef
 
         self.game_handler_parent = game_handler_parent
+        # Game will block on the waiting state until this fires
+        self.start_event = Event()
+        self.crash_event = Event()
 
         self.players: Dict[WebSocket, PlayingPlayer] = {
             ws: PlayingPlayer(player.name) for ws, player in players.items()
@@ -103,14 +109,21 @@ class Game:
             )
             self.ongoing = True
             self.initial_time = time.time()
+            Thread(target=self.launch_crash_timer).start()
             return True
         else:
             print("Game already started.")
             return False
 
+    def blocking_pre_game_wait(self):
+        sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
+        self.start_event.wait()
+
     def reset_game(self):
         self.ongoing = False
         self.players = {}
+        self.crash_event.clear()
+        self.start_event.clear()
         self.game_duration = max(
             self.min_time, np.random.normal(self.average, self.std)
         )
@@ -172,7 +185,9 @@ class Game:
 
     # States management
     def is_waiting(self) -> bool:
-        return (time.time() - self.waiting_initial_time) < 10  # 10 seconds wait for now
+        return (
+            time.time() - self.waiting_initial_time
+        ) < GAME_WAIT_TIME_S  # 10 seconds wait for now
 
     def reset_waiting_time(self):
         self.waiting_initial_time = time.time()
@@ -182,6 +197,15 @@ class Game:
             return (time.time() - self.initial_time) > self.game_duration
         else:
             return False  # Game is not crashed, it has not started
+
+    def launch_crash_timer(self):
+        sleep_and_go(self.game_duration, self.crash_event)
+
+    def get_crash_event(self):
+        return self.crash_event
+
+    def wait_for_crash(self):
+        self.crash_event.wait()
 
 
 if __name__ == "__main__":

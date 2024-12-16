@@ -89,9 +89,6 @@ async def loop():
         # next time a player joins an empty lobby
         player_join_event.clear()
 
-        # TODO: remove sleep and make loop loose by using events
-        time.sleep(0.02)
-
 
 def run_async_loop():
     event_loop = asyncio.new_event_loop()

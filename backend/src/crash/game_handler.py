@@ -116,13 +116,14 @@ class Game:
             return False
 
     def blocking_pre_game_wait(self):
-        self.start_event.clear()
-        Thread(target=lambda: sleep_and_go(GAME_WAIT_TIME_S, self.start_event)).start()
+        sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
         self.start_event.wait()
 
     def reset_game(self):
         self.ongoing = False
         self.players = {}
+        self.crash_event.clear()
+        self.start_event.clear()
         self.game_duration = max(
             self.min_time, np.random.normal(self.average, self.std)
         )
@@ -198,9 +199,7 @@ class Game:
             return False  # Game is not crashed, it has not started
 
     def launch_crash_timer(self):
-        self.crash_event.clear()
-        time.sleep(self.game_duration)
-        self.crash_event.set()
+        sleep_and_go(self.game_duration, self.crash_event)
 
     def get_crash_event(self):
         return self.crash_event

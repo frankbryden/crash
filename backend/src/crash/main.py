@@ -96,7 +96,6 @@ def run_async_loop():
     event_loop.run_until_complete(loop())
 
 
-# thread = Thread(target = loop)
 thread = Thread(target=run_async_loop, daemon=True)
 thread.start()
 

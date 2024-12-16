@@ -1,12 +1,16 @@
 import time
 import asyncio
-from threading import Event
+from threading import Event, Thread
 
 
 def sleep_and_go(duration: int, event: Event):
     """Sleep for `duration` s, then fire the `event`"""
-    time.sleep(duration)
-    event.set()
+
+    def _thread_func():
+        time.sleep(duration)
+        event.set()
+
+    Thread(target=_thread_func).start()
 
 
 def run_async_in_thread(async_func):

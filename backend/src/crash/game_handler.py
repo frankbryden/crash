@@ -8,7 +8,7 @@ from crash.player import PlayingPlayer, Player
 from crash.records import Cashout, CashoutMessage
 from crash.utils import sleep_and_go
 
-GAME_WAIT_TIME_S = 4
+GAME_WAIT_TIME_S = 10
 
 
 class GameHandler:

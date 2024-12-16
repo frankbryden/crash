@@ -9,4 +9,5 @@ dependencies = [
   "fastapi[standard]",
   "numpy",
   "pymongo",
+  "pytest",
 ]

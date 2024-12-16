@@ -135,6 +135,7 @@ class Game:
         # Players can only bid once
         if self.players[ws].bid(bid_amount):
             self.game_handler_parent.players[ws].cash -= bid_amount
+            self.game_handler_parent.players[ws].bid_history.append(bid_amount)
 
     # Maybe make time an input instead and remove dependancy on time library
     def get_multiplicator(self) -> float:

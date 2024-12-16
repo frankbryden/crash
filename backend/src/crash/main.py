@@ -37,7 +37,7 @@ class ConnectionManager:
 
 
 # Connect to Mongo, get db and the player collection
-mongo_client = MongoClient("db", 27017)
+mongo_client = MongoClient("db", 27017, serverSelectionTimeoutMS=2000)
 db = mongo_client.crash
 players_collection = db.players
 
@@ -204,7 +204,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                 else:
                     cashout = game.cashout(websocket)
-
+                    print(cashout)
                     if cashout:
                         await manager.broadcast_lobby(
                             {

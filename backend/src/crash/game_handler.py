@@ -135,7 +135,6 @@ class Game:
         # Players can only bid once
         if self.players[ws].bid(bid_amount):
             self.game_handler_parent.players[ws].cash -= bid_amount
-            self.game_handler_parent.players[ws].bid_history.append(bid_amount)
 
     # Maybe make time an input instead and remove dependancy on time library
     def get_multiplicator(self) -> float:
@@ -204,6 +203,24 @@ class Game:
 
     def wait_for_crash(self):
         self.crash_event.wait()
+
+    def update_players_history(self):
+        for ws in self.players:
+            current_player = self.players[ws]
+            current_lobby_player = self.game_handler_parent.players[ws]
+            current_cashout = current_player.cashout_record
+            # Save history only if the player has bid
+            if current_player.has_bid:
+                current_lobby_player.bid_history.append(current_player.bid_value)
+                # Checks if the player has managed to cashout before crash
+                if current_cashout != None:
+                    current_lobby_player.gain_history.append(current_cashout.gain)
+                    current_lobby_player.mult_history.append(current_cashout.mult)
+                else:
+                    current_lobby_player.gain_history.append(
+                        -1 * current_player.bid_value
+                    )
+                    current_lobby_player.mult_history.append(0)
 
 
 if __name__ == "__main__":

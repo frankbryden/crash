@@ -89,6 +89,8 @@ async def loop():
         # Play until crash
         game.wait_for_crash()
         await manager.broadcast_lobby({"type": "state", "state": "crashed"})
+        # We update the player history (bids, gains and multipliers)
+        game.update_players_history()
         game.reset_game()
 
         # Clear the event so that we can set it again
@@ -155,6 +157,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             "cash": cash,
                             "bid_history": [],
                             "gain_history": [],
+                            "mult_history": [],
                         }
                     )
                     print("Player added to db with id :", player_id)
@@ -235,6 +238,13 @@ async def websocket_endpoint(websocket: WebSocket):
         # Update the information in the db
         players_collection.update_one(
             {"name": current_players[websocket].name},
-            {"$set": {"cash": current_players[websocket].cash}},
+            {
+                "$set": {"cash": current_players[websocket].cash},
+                "$push": {
+                    "bid_history": current_players[websocket].bid_history,
+                    "gain_history": current_players[websocket].gain_history,
+                    "mult_history": current_players[websocket].mult_history,
+                },
+            },
         )
         del game_handler.players[websocket]  # delete the player from the lobby

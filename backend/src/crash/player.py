@@ -30,3 +30,4 @@ class Player:
         self.cash = cash
         self.bid_history = []
         self.gain_history = []
+        self.mult_history = []

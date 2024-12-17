@@ -37,6 +37,16 @@ export default function App() {
     const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
     const [cashoutData, setCashoutData] = useState([]);
+    const [countDownVal, setCountDownVal] = useState(null);
+
+    useEffect(() => {
+        if (countDownVal == null) {
+            return;
+        }
+        if (countDownVal > 0) {
+            setTimeout(() => setCountDownVal(countDownVal - 1), 95);
+        }
+    }, [countDownVal]);
 
     if (email == undefined) {
         throw new Response("Not authorized", { status: 401 });
@@ -61,8 +71,15 @@ export default function App() {
                 case "state":
                     setGameState(event.state);
                     if (event.state == "playing") {
+                        setCountDownVal(null);
                         setPoints([]);
                         setCashoutData([]);
+                    } else if (event.state == "waiting") {
+                        // {"type": "state", "state": "waiting", "estimated_start": 1734394996.9588025}
+                        const now = new Date();
+                        const remainingTimeMs = event.estimated_start * 1000 - now;
+                        // We want to countdown 100ms at a time
+                        setCountDownVal(remainingTimeMs / 100);
                     }
                     break;
                 case "bid":
@@ -141,6 +158,7 @@ export default function App() {
                         </div>
                     </div> */}
                     <h1>{gameState}</h1>
+                    <h1>{Math.round(countDownVal) / 10}s</h1>
                     <div>
                         <CrashCurve points={points} />
                     </div>

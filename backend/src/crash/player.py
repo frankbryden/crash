@@ -28,3 +28,6 @@ class Player:
     def __init__(self, name: str, cash: int):
         self.name = name
         self.cash = cash
+        self.bid_history = []
+        self.gain_history = []
+        self.mult_history = []

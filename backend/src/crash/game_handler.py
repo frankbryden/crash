@@ -32,8 +32,6 @@ class GameHandler:
 
         self.players: Dict[WebSocket, Player] = {}
 
-        self.cash: Dict[WebSocket:int] = {}
-
         # For concurrent access
         self.mutex = Lock()
 
@@ -58,12 +56,9 @@ class GameHandler:
             game_handler_parent=self,
         )
 
-    def join(self, ws, name):
+    def join(self, ws, name, cash):
         with self.mutex:
-            self.players[ws] = Player(name, 1000)
-
-            if ws not in self.cash:
-                self.cash[ws] = 1000
+            self.players[ws] = Player(name, cash)
 
 
 class Game:
@@ -129,7 +124,7 @@ class Game:
         )
 
     def bid(self, ws, amount):
-        cash_available = self.game_handler_parent.cash[ws]
+        cash_available = self.game_handler_parent.players[ws].cash
         bid_amount = min(amount, cash_available)
 
         # Was player not here at round start?
@@ -139,7 +134,7 @@ class Game:
 
         # Players can only bid once
         if self.players[ws].bid(bid_amount):
-            self.game_handler_parent.cash[ws] -= bid_amount
+            self.game_handler_parent.players[ws].cash -= bid_amount
 
     # Maybe make time an input instead and remove dependancy on time library
     def get_multiplicator(self) -> float:
@@ -154,14 +149,16 @@ class Game:
         if ws in self.players and not self.players[ws].cashout_record:
             mult = self.get_multiplicator()
             cashout = self.players[ws].cashout(mult)
-            self.game_handler_parent.cash[ws] += cashout.gain
+            self.game_handler_parent.players[ws].cash += cashout.gain
             return cashout
 
     def get_cash_vaults(self, current_players: dict) -> Dict[str, int]:
         cash_dict = {}
         for ws in current_players:
-            if ws in self.game_handler_parent.cash:
-                cash_dict[current_players[ws].name] = self.game_handler_parent.cash[ws]
+            if ws in self.game_handler_parent.players:
+                cash_dict[current_players[ws].name] = self.game_handler_parent.players[
+                    ws
+                ].cash
 
         return cash_dict
 
@@ -206,6 +203,21 @@ class Game:
 
     def wait_for_crash(self):
         self.crash_event.wait()
+
+    def update_players_history(self):
+        for ws, player in self.players.items():
+            lobby_player = self.game_handler_parent.players[ws]
+            cashout = player.cashout_record
+            # Save history only if the player has bid
+            if player.has_bid:
+                lobby_player.bid_history.append(player.bid_value)
+                # Checks if the player has managed to cashout before crash
+                if cashout != None:
+                    lobby_player.gain_history.append(cashout.gain)
+                    lobby_player.mult_history.append(cashout.mult)
+                else:
+                    lobby_player.gain_history.append(-1 * player.bid_value)
+                    lobby_player.mult_history.append(0)
 
 
 if __name__ == "__main__":

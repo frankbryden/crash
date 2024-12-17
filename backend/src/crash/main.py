@@ -88,7 +88,13 @@ async def loop():
 
         # Play until crash
         game.wait_for_crash()
-        await manager.broadcast_lobby({"type": "state", "state": "crashed"})
+        await manager.broadcast_lobby(
+            {
+                "type": "state",
+                "state": "crashed",
+                "cash_vaults": game.get_cash_vaults(game_handler.players),
+            }
+        )
         # We update the player history (bids, gains and multipliers)
         game.update_players_history()
         game.reset_game()
@@ -130,7 +136,6 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         # Maybe make this "while True" a "while connected"?
         while True:
-            current_players = game_handler.players
 
             data = await websocket.receive_text()
             print(data)
@@ -139,7 +144,7 @@ async def websocket_endpoint(websocket: WebSocket):
             if message["type"] == "join":
 
                 # A player has joined an empty lobby
-                if len(current_players) == 0:
+                if len(game_handler.players) == 0:
                     player_join_event.set()
                     game.reset_waiting_time()
 
@@ -172,9 +177,11 @@ async def websocket_endpoint(websocket: WebSocket):
                     {
                         "type": "join",
                         "target": name,
-                        "lobby": [player.name for player in current_players.values()],
-                        "cash_vaults": game.get_cash_vaults(current_players),
-                        "bids": game.get_bids(current_players),
+                        "lobby": [
+                            player.name for player in game_handler.players.values()
+                        ],
+                        "cash_vaults": game.get_cash_vaults(game_handler.players),
+                        "bids": game.get_bids(game_handler.players),
                         "state": "waiting" if game.is_waiting() else "playing",
                     }
                 )
@@ -193,10 +200,10 @@ async def websocket_endpoint(websocket: WebSocket):
                     await manager.broadcast_lobby(
                         {
                             "type": "bid",
-                            "target": current_players[websocket].name,
+                            "target": game_handler.players[websocket].name,
                             "amount": amount,
-                            "bids": game.get_bids(current_players),
-                            "cash_vaults": game.get_cash_vaults(current_players),
+                            "bids": game.get_bids(game_handler.players),
+                            "cash_vaults": game.get_cash_vaults(game_handler.players),
                         }
                     )
 
@@ -212,10 +219,12 @@ async def websocket_endpoint(websocket: WebSocket):
                         await manager.broadcast_lobby(
                             {
                                 "type": "cashout",
-                                "target": current_players[websocket].name,
+                                "target": game_handler.players[websocket].name,
                                 "mult": cashout.mult,
                                 "gains": cashout.gain,
-                                "cash_vaults": game.get_cash_vaults(current_players),
+                                "cash_vaults": game.get_cash_vaults(
+                                    game_handler.players
+                                ),
                                 "cashouts": game.get_cashouts(),
                             }
                         )
@@ -223,27 +232,27 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
 
         manager.disconnect(websocket)
-        new_player_list = [player.name for player in current_players.values()]
-        new_player_list.remove(current_players[websocket].name)
+        new_player_list = [player.name for player in game_handler.players.values()]
+        new_player_list.remove(game_handler.players[websocket].name)
         print("new lobby list : ", new_player_list)
         await manager.broadcast_lobby(
             {
                 "type": "leave",
-                "target": current_players[websocket].name,
+                "target": game_handler.players[websocket].name,
                 "lobby": new_player_list,
-                "bids": game.get_bids(current_players),
-                "cash_vaults": game.get_cash_vaults(current_players),
+                "bids": game.get_bids(game_handler.players),
+                "cash_vaults": game.get_cash_vaults(game_handler.players),
             }
         )
         # Update the information in the db
         players_collection.update_one(
-            {"name": current_players[websocket].name},
+            {"name": game_handler.players[websocket].name},
             {
-                "$set": {"cash": current_players[websocket].cash},
+                "$set": {"cash": game_handler.players[websocket].cash},
                 "$push": {
-                    "bid_history": current_players[websocket].bid_history,
-                    "gain_history": current_players[websocket].gain_history,
-                    "mult_history": current_players[websocket].mult_history,
+                    "bid_history": game_handler.players[websocket].bid_history,
+                    "gain_history": game_handler.players[websocket].gain_history,
+                    "mult_history": game_handler.players[websocket].mult_history,
                 },
             },
         )

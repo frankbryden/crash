@@ -205,22 +205,19 @@ class Game:
         self.crash_event.wait()
 
     def update_players_history(self):
-        for ws in self.players:
-            current_player = self.players[ws]
-            current_lobby_player = self.game_handler_parent.players[ws]
-            current_cashout = current_player.cashout_record
+        for ws, player in self.players.items():
+            lobby_player = self.game_handler_parent.players[ws]
+            cashout = player.cashout_record
             # Save history only if the player has bid
-            if current_player.has_bid:
-                current_lobby_player.bid_history.append(current_player.bid_value)
+            if player.has_bid:
+                lobby_player.bid_history.append(player.bid_value)
                 # Checks if the player has managed to cashout before crash
-                if current_cashout != None:
-                    current_lobby_player.gain_history.append(current_cashout.gain)
-                    current_lobby_player.mult_history.append(current_cashout.mult)
+                if cashout != None:
+                    lobby_player.gain_history.append(cashout.gain)
+                    lobby_player.mult_history.append(cashout.mult)
                 else:
-                    current_lobby_player.gain_history.append(
-                        -1 * current_player.bid_value
-                    )
-                    current_lobby_player.mult_history.append(0)
+                    lobby_player.gain_history.append(-1 * player.bid_value)
+                    lobby_player.mult_history.append(0)
 
 
 if __name__ == "__main__":

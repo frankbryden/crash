@@ -208,12 +208,9 @@ class Game:
     def get_crash_event(self):
         return self.crash_event
 
-    def get_crash_event(self):
-        return self.crash_event
-
     def wait_for_crash(self):
         self.crash_event.wait()
-    
+
     def get_estimated_start_time(self) -> Optional[int]:
         return self.estimated_game_start_time
 

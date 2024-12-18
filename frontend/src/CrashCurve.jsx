@@ -6,7 +6,7 @@ const DEFAULT_MAX_MULT = 4;
 const PADDING = 20;
 const NUMBER_OF_TICKS = 6;
 
-export default function CrashCurve({ points: mults }) {
+export default function CrashCurve({ points: mults, countdown }) {
     const canvasRef = useRef(null);
     const lastMult = mults[mults.length - 1];
     const currentYAxisMax = Math.max(lastMult, DEFAULT_MAX_MULT);
@@ -49,6 +49,19 @@ export default function CrashCurve({ points: mults }) {
         let tickIndex = 0;
         // Object to keep track of where the y-axis ticks need to go
         let ticksGeometry = new Map();
+
+        if (countdown) {
+            ctx.font = "50px Brush Script MT";
+            let text;
+            const remaining = Math.round(countdown.remainingTime);
+            if (remaining % 10 == 0) {
+                text = `${Math.round(countdown.remainingTime) / 10}.0s`;
+            } else {
+                text = `${Math.round(countdown.remainingTime) / 10}s`;
+            }
+            const textWidth = ctx.measureText(text).width;
+            ctx.fillText(text, canvas.width / 2 - textWidth / 2, canvas.height / 2);
+        }
 
         ctx.beginPath();
         // Go to (0, 0) with a flipped y-axis

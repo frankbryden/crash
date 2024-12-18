@@ -43,8 +43,18 @@ export default function App() {
         if (countDownVal == null) {
             return;
         }
-        if (countDownVal > 0) {
-            setTimeout(() => setCountDownVal(countDownVal - 1), 95);
+        if (countDownVal.remainingTime > 0) {
+            setTimeout(() => {
+                const now = new Date();
+                const remainingTimeMs = countDownVal.estimatedStart - now;
+                setCountDownVal({
+                    estimatedStart: countDownVal.estimatedStart,
+                    // We want to countdown 100ms at a time
+                    remainingTime: remainingTimeMs / 100,
+                });
+                // 95ms timeout cause we tend to get late scheduled
+                // The remaining time doesn't get offset since we're still recomputing each time
+            }, 95);
         }
     }, [countDownVal]);
 
@@ -75,11 +85,11 @@ export default function App() {
                         setPoints([]);
                         setCashoutData([]);
                     } else if (event.state == "waiting") {
-                        // {"type": "state", "state": "waiting", "estimated_start": 1734394996.9588025}
-                        const now = new Date();
-                        const remainingTimeMs = event.estimated_start * 1000 - now;
-                        // We want to countdown 100ms at a time
-                        setCountDownVal(remainingTimeMs / 100);
+                        setCountDownVal({
+                            estimatedStart: event.estimated_start * 1000,
+                            // We want to countdown 100ms at a time (and there's 100 of those in 10s)
+                            remainingTime: 300
+                        });
                     }
                     break;
                 case "bid":
@@ -158,9 +168,8 @@ export default function App() {
                         </div>
                     </div> */}
                     <h1>{gameState}</h1>
-                    <h1>{Math.round(countDownVal) / 10}s</h1>
                     <div>
-                        <CrashCurve points={points} />
+                        <CrashCurve points={points} countdown={countDownVal} />
                     </div>
                     <Lobby players={players} />
                     <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />

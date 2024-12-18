@@ -72,8 +72,15 @@ async def loop():
             player_join_event.wait()
 
         # Start timer
-        await manager.broadcast_lobby({"type": "state", "state": "waiting"})
-        game.blocking_pre_game_wait()
+        estimated_start_time = game.start_pre_game_wait()
+        await manager.broadcast_lobby(
+            {
+                "type": "state",
+                "state": "waiting",
+                "estimated_start": estimated_start_time,
+            }
+        )
+        game.wait_for_game_start()
 
         # Start the game
         game.start_game()

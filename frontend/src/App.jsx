@@ -37,6 +37,26 @@ export default function App() {
     const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
     const [cashoutData, setCashoutData] = useState([]);
+    const [countDownVal, setCountDownVal] = useState(null);
+
+    useEffect(() => {
+        if (countDownVal == null) {
+            return;
+        }
+        if (countDownVal.remainingTime > 0) {
+            setTimeout(() => {
+                const now = new Date();
+                const remainingTimeMs = countDownVal.estimatedStart - now;
+                setCountDownVal({
+                    estimatedStart: countDownVal.estimatedStart,
+                    // We want to countdown 100ms at a time
+                    remainingTime: remainingTimeMs / 100,
+                });
+                // 95ms timeout cause we tend to get late scheduled
+                // The remaining time doesn't get offset since we're still recomputing each time
+            }, 95);
+        }
+    }, [countDownVal]);
 
     if (email == undefined) {
         throw new Response("Not authorized", { status: 401 });
@@ -61,8 +81,15 @@ export default function App() {
                 case "state":
                     setGameState(event.state);
                     if (event.state == "playing") {
+                        setCountDownVal(null);
                         setPoints([]);
                         setCashoutData([]);
+                    } else if (event.state == "waiting") {
+                        setCountDownVal({
+                            estimatedStart: event.estimated_start * 1000,
+                            // We want to countdown 100ms at a time (and there's 100 of those in 10s)
+                            remainingTime: 300
+                        });
                     }
                     break;
                 case "bid":
@@ -142,7 +169,7 @@ export default function App() {
                     </div> */}
                     <h1>{gameState}</h1>
                     <div>
-                        <CrashCurve points={points} />
+                        <CrashCurve points={points} countdown={countDownVal} />
                     </div>
                     <Lobby players={players} />
                     <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />

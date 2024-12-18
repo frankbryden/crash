@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from typing import Tuple, Dict
+from typing import Optional, Dict
 from fastapi import WebSocket
 from threading import Lock, Event, Thread
 
@@ -93,6 +93,8 @@ class Game:
         self.start_event = Event()
         self.crash_event = Event()
 
+        self.estimated_game_start_time: Optional[int] = None
+
         self.players: Dict[WebSocket, PlayingPlayer] = {
             ws: PlayingPlayer(player.name) for ws, player in players.items()
         }
@@ -110,8 +112,13 @@ class Game:
             print("Game already started.")
             return False
 
-    def blocking_pre_game_wait(self):
+    def start_pre_game_wait(self) -> int:
+        """Start the pre-game wait thread and return the estimated start time."""
+        self.estimated_game_start_time = time.time() + GAME_WAIT_TIME_S
         sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
+        return self.estimated_game_start_time
+
+    def wait_for_game_start(self):
         self.start_event.wait()
 
     def reset_game(self):
@@ -203,6 +210,9 @@ class Game:
 
     def wait_for_crash(self):
         self.crash_event.wait()
+
+    def get_estimated_start_time(self) -> Optional[int]:
+        return self.estimated_game_start_time
 
     def update_players_history(self):
         for ws, player in self.players.items():

@@ -15,7 +15,6 @@ const COLUMN_ORDERING = ["bid", "mult", "gain"];
  */
 export default function CashoutTable({ rows }) {
     const data = Object.keys(rows).map(name => [name, ...COLUMN_ORDERING.map(col => rows[name][col])]);
-    console.log(data);
     return (
         <div>
             <h2>Cashout</h2>

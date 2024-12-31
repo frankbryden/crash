@@ -68,7 +68,7 @@ export default function App() {
             console.log(`ws opened, sending ${email}`);
             ws.current.send(JSON.stringify({
                 "type": "join",
-                "name": getRandomName(),
+                "name": email,
             }));
         };
         ws.current.onclose = () => console.log("ws closed");

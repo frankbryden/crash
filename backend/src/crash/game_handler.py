@@ -224,7 +224,6 @@ class Game:
             cashout = player.cashout_record
             # Save history only if the player has bid
             if player.has_bid:
-                logging.info(f"Adding bid of {player.bid_value} to {player.name}")
                 player.bid_history.append(player.bid_value)
                 # Checks if the player has managed to cashout before crash
                 if cashout != None:

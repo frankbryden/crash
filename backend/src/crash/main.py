@@ -5,6 +5,7 @@ import asyncio
 from pymongo import MongoClient
 
 from crash.game_handler import GameHandler
+from crash.player import PlayingPlayer
 import logging
 
 logging.basicConfig(
@@ -39,9 +40,9 @@ class ConnectionManager:
 
 
 # Connect to Mongo, get db and the player collection
-# mongo_client = MongoClient("db", 27017, serverSelectionTimeoutMS=2000)
-# db = mongo_client.crash
-# players_collection = db.players
+mongo_client = MongoClient("db", 27017, serverSelectionTimeoutMS=2000)
+db = mongo_client.crash
+players_collection = db.players
 
 manager = ConnectionManager()
 
@@ -54,12 +55,7 @@ player_join_event = asyncio.Event()
 
 
 async def continuously_transmit_mult(stop_event: asyncio.Event):
-    logging.info("Enter continuously_transmit_mult")
-    # for task in asyncio.all_tasks():
-    #     logging.info(f"[continuously_transmit_mult] Task: {task}, Coroutine: {task.get_coro().__name__}, Done: {task.done()}")
-
     while not stop_event.is_set():
-        logging.info("Transmit")
         await manager.broadcast_lobby(
             {"type": "mult", "mult": game.get_multiplicator()}
         )
@@ -182,26 +178,18 @@ async def websocket_endpoint(websocket: WebSocket):
                 # Name will be google id string later
                 name = message["name"]
 
-                player_info = None  # players_collection.find_one({"name": name})
+                player_info = players_collection.find_one({"name": name})
                 # Check if player is in the db
                 if player_info == None:
                     # If not, we create their doc
                     cash = 1000
-                    player_id = "hey"  # players_collection.insert_one(
-                    #     {
-                    #         "name": name,
-                    #         "cash": cash,
-                    #         "bid_history": [],
-                    #         "gain_history": [],
-                    #         "mult_history": [],
-                    #     }
-                    # )
+                    player = PlayingPlayer(name, cash=cash)
+                    player_id = players_collection.insert_one(player.to_db_entry())
                     print("Player added to db with id :", player_id)
-
                 else:
-                    cash = player_info["cash"]
+                    player = PlayingPlayer.from_db_entry(player_info)
 
-                await game_handler.join(websocket, name, cash)
+                await game_handler.join(websocket, player)
 
                 # Broadcast the lobby state to everyone
                 await manager.broadcast_lobby(
@@ -245,7 +233,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                 else:
                     cashout = game.cashout(websocket)
-                    print(cashout)
+                    logging.info(cashout)
                     if cashout:
                         await manager.broadcast_lobby(
                             {
@@ -262,7 +250,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
 
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
         new_player_list = [player.name for player in game_handler.players.values()]
         new_player_list.remove(game_handler.players[websocket].name)
         print("new lobby list : ", new_player_list)
@@ -276,11 +264,13 @@ async def websocket_endpoint(websocket: WebSocket):
             }
         )
         # Update the information in the db
+        print("Updating player in db")
+        print(game_handler.players[websocket].to_db_entry())
         players_collection.update_one(
             {"name": game_handler.players[websocket].name},
             {
-                "$set": {"cash": game_handler.players[websocket].cash},
-                "$push": {
+                "$set": {
+                    "cash": game_handler.players[websocket].cash,
                     "bid_history": game_handler.players[websocket].bid_history,
                     "gain_history": game_handler.players[websocket].gain_history,
                     "mult_history": game_handler.players[websocket].mult_history,

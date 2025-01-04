@@ -1,5 +1,9 @@
-from asyncio import Event, sleep
+from asyncio import Event, sleep, create_task
 import logging
+
+
+async def background_sleep_and_go(duration: int, event: Event):
+    create_task(sleep_and_go(duration, event))
 
 
 async def sleep_and_go(duration: int, event: Event):

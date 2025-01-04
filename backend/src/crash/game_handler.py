@@ -5,9 +5,9 @@ from fastapi import WebSocket
 from asyncio import Lock, Event
 import asyncio, logging
 
-from crash.player import PlayingPlayer, Player
+from crash.player import PlayingPlayer
 from crash.records import Cashout, CashoutMessage
-from crash.utils import sleep_and_go
+from crash.utils import background_sleep_and_go
 
 GAME_WAIT_TIME_S = 3
 
@@ -31,7 +31,7 @@ class GameHandler:
         self.starting_multiplicator = starting_multiplicator
         self.multiplicator_coef = multiplicator_coef
 
-        self.players: Dict[WebSocket, Player] = {}
+        self.players: Dict[WebSocket, PlayingPlayer] = {}
 
         # For concurrent access
         self.mutex = Lock()
@@ -57,16 +57,16 @@ class GameHandler:
             game_handler_parent=self,
         )
 
-    async def join(self, ws, name, cash):
+    async def join(self, ws: WebSocket, player: PlayingPlayer):
         async with self.mutex:
-            self.players[ws] = Player(name, cash)
+            self.players[ws] = player
 
 
 class Game:
     def __init__(
         self,
         name: str,
-        players: Dict[WebSocket, Player],
+        players: Dict[WebSocket, PlayingPlayer],
         multiplicator_coef: float = 0.01,
         average: float = 30,
         standard_deviation: float = 10,
@@ -96,9 +96,7 @@ class Game:
 
         self.estimated_game_start_time: Optional[int] = None
 
-        self.players: Dict[WebSocket, PlayingPlayer] = {
-            ws: PlayingPlayer(player.name) for ws, player in players.items()
-        }
+        self.players: Dict[WebSocket, PlayingPlayer] = players
 
     async def start_game(self) -> bool:
         if not self.ongoing:
@@ -116,7 +114,8 @@ class Game:
     async def start_pre_game_wait(self) -> int:
         """Start the pre-game wait thread and return the estimated start time."""
         self.estimated_game_start_time = time.time() + GAME_WAIT_TIME_S
-        await sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
+        logging.info("Gonna start pre game wait")
+        await background_sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
         return self.estimated_game_start_time
 
     async def wait_for_game_start(self):
@@ -124,7 +123,8 @@ class Game:
 
     def reset_game(self):
         self.ongoing = False
-        self.players = {}
+        for player in self.players.values():
+            player.reset_game()
         self.crash_event.clear()
         self.start_event.clear()
         self.game_duration = max(
@@ -138,6 +138,9 @@ class Game:
         # Was player not here at round start?
         if ws not in self.players:
             # Player is created and added to the round
+            logging.warning(
+                "PLAYER WAS NOT HERE - why are we even accepting this bid??"
+            )
             self.players[ws] = PlayingPlayer(self.game_handler_parent.players[ws].name)
 
         # Players can only bid once
@@ -204,7 +207,8 @@ class Game:
             return False  # Game is not crashed, it has not started
 
     async def launch_crash_timer(self):
-        await sleep_and_go(self.game_duration, self.crash_event)
+        logging.info("Gonna start crash timer")
+        await background_sleep_and_go(self.game_duration, self.crash_event)
 
     def get_crash_event(self):
         return self.crash_event
@@ -222,6 +226,7 @@ class Game:
             cashout = player.cashout_record
             # Save history only if the player has bid
             if player.has_bid:
+                logging.info(f"Adding bid of {player.bid_value} to {player.name}")
                 player.bid_history.append(player.bid_value)
                 # Checks if the player has managed to cashout before crash
                 if cashout != None:
@@ -230,6 +235,9 @@ class Game:
                 else:
                     player.gain_history.append(-1 * player.bid_value)
                     player.mult_history.append(0)
+        logging.info(
+            f"After update, we have {[player.to_db_entry() for player in self.players.values()]}"
+        )
 
 
 if __name__ == "__main__":

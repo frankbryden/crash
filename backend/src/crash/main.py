@@ -64,9 +64,7 @@ async def continuously_transmit_mult(stop_event: asyncio.Event):
 
 # Server loop
 async def loop():
-    logging.info("LOOP")
     while True:
-        logging.info("LOOP start")
         current_players = game_handler.players
         # logging.info(current_players)
         # If there is no player we wait for one to save CPU cycles
@@ -76,7 +74,6 @@ async def loop():
 
         # Start timer
         estimated_start_time = await game.start_pre_game_wait()
-        logging.info("waited for pre game wait")
         await manager.broadcast_lobby(
             {
                 "type": "state",
@@ -85,19 +82,12 @@ async def loop():
             }
         )
         await game.wait_for_game_start()
-        logging.info("waited for game start")
 
         # Start the game
         await game.start_game()
         await manager.broadcast_lobby({"type": "state", "state": "playing"})
-        logging.info("waited for game playing event message")
-        # for task in asyncio.all_tasks():
-        #     logging.info(f"[main] Task: {task}, Coroutine: {task.get_coro().__name__}, Done: {task.done()}")
 
         # Send the multiplicator to be drawn until crash
-        # transmitter_task = asyncio.create_task(continuously_transmit_mult(game.get_crash_event()))
-        # crash_task = asyncio.create_task(game.wait_for_crash())
-        logging.info("Gonna start tranmission of mult")
         await continuously_transmit_mult(game.get_crash_event())
 
         # await asyncio.gather(transmitter_task, crash_task)
@@ -106,8 +96,6 @@ async def loop():
             game.wait_for_crash(),
         )
 
-        logging.info("Both tasks completed")
-
         await manager.broadcast_lobby(
             {
                 "type": "state",
@@ -115,7 +103,6 @@ async def loop():
                 "cash_vaults": game.get_cash_vaults(game_handler.players),
             }
         )
-        logging.info("waited for game crash event message")
         # We update the player history (bids, gains and multipliers)
         game.update_players_history()
         game.reset_game()

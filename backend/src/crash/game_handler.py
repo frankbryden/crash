@@ -3,13 +3,13 @@ import time
 from typing import Optional, Dict
 from fastapi import WebSocket
 from asyncio import Lock, Event
-import asyncio, logging
+import logging
 
 from crash.player import PlayingPlayer
 from crash.records import Cashout, CashoutMessage
 from crash.utils import background_sleep_and_go
 
-GAME_WAIT_TIME_S = 3
+GAME_WAIT_TIME_S = 5
 
 
 class GameHandler:
@@ -17,8 +17,8 @@ class GameHandler:
     def __init__(
         self,
         name: str = "New Lobby",
-        average: float = 5,
-        standard_deviation: float = 1,
+        average: float = 30,
+        standard_deviation: float = 10,
         minimum_time: float = 3,
         starting_multiplicator: float = 0.75,
         multiplicator_coef: float = 0.1,
@@ -214,8 +214,6 @@ class Game:
         return self.crash_event
 
     async def wait_for_crash(self):
-        # for task in asyncio.all_tasks():
-        #     logging.info(f"[wait_for_crash] Task: {task}, Coroutine: {task.get_coro().__name__}, Done: {task.done()}")
         await self.crash_event.wait()
 
     def get_estimated_start_time(self) -> Optional[int]:
@@ -226,7 +224,6 @@ class Game:
             cashout = player.cashout_record
             # Save history only if the player has bid
             if player.has_bid:
-                logging.info(f"Adding bid of {player.bid_value} to {player.name}")
                 player.bid_history.append(player.bid_value)
                 # Checks if the player has managed to cashout before crash
                 if cashout != None:

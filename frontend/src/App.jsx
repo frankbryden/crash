@@ -19,6 +19,7 @@ import FancyButton from './FancyButton';
 import Error from './Error';
 import useErrorQueue from './utils/useErrorQueue';
 import CashoutTable from './CashoutTable';
+import { GameStates } from './utils/constants';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -64,7 +65,22 @@ export default function App() {
         throw new Response("Not authorized", { status: 401 });
     }
 
-    const wsConnection = useEffect(() => {
+    let myCash = -1;
+    if (Object.keys(cashVaults).length > 0) {
+        myCash = cashVaults[email];
+    }
+
+    let myBid = null;
+    if (email in bids) {
+        myBid = bids[email];
+    }
+
+    let myCashout = null;
+    if (email in cashoutData) {
+        myCashout = cashoutData[email];
+    }
+
+    useEffect(() => {
         ws.current = new WebSocket(import.meta.env.VITE_BACKEND_WSL);
         ws.current.onopen = () => {
             console.log(`ws opened, sending ${email}`);
@@ -78,9 +94,11 @@ export default function App() {
             let event = JSON.parse(ev.data);
             switch (event.type) {
                 case "join":
-                    setPlayers(event.lobby)
+                    setPlayers(event.lobby);
+                    setCashVaults(event.cash_vaults);
                     break;
                 case "state":
+                    // setGameState(Symbol.for(event.state));
                     setGameState(event.state);
                     if (event.state == "playing") {
                         setCountDownVal(null);
@@ -92,6 +110,9 @@ export default function App() {
                             // We want to countdown 100ms at a time (and there's 100 of those in 10s)
                             remainingTime: 300
                         });
+                    } else if (event.state == "crashed") {
+                        setBids({});
+                        setCashVaults(event.cash_vaults);
                     }
                     break;
                 case "bid":
@@ -107,6 +128,9 @@ export default function App() {
                     }
                     break;
                 case "cashout":
+                    if (event.target == email) {
+                        setGameState(GameStates.CASHED_OUT);
+                    }
                     setCashoutData(event.cashouts);
                     break;
                 default:
@@ -164,11 +188,7 @@ export default function App() {
             <Navbar leftLinks={leftLinks} rightLinks={rightLinks} />
             {outlet ||
                 <div>
-                    {/* <div className="flex flex-col items-center justify-center py-32">
-                        <div className="p-4 text-center">
-                            <img src={`/smart_owl.gif`} alt="Smart Owl" className="w-64 h-64" />
-                        </div>
-                    </div> */}
+                    <p>Balance: {myCash}</p>
                     <h1>{gameState}</h1>
                     <div>
                         <CrashCurve points={points} countdown={countDownVal} />
@@ -177,8 +197,18 @@ export default function App() {
                     <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />
                     <NumbersTable title="Cash vaults" keyColTitle="Player" valColTitle="Value" mapping={cashVaults} />
                     <CashoutTable rows={cashoutData} />
-                    <Bidding bidFunc={makeBid} />
-                    <FancyButton name={"Cashout"} onClick={cashout} />
+                    {gameState == GameStates.WAITING &&
+                        <Bidding bidFunc={makeBid} />
+                    }
+                    {gameState == GameStates.PLAYING && myBid != null &&
+                        <div>
+                            <p>Current bid: {myBid}</p>
+                            <FancyButton name={"Cashout"} onClick={cashout} />
+                        </div>
+                    }
+                    {gameState == GameStates.CASHED_OUT && myCashout != null &&
+                        <p>Cashed out @ x{myCashout.mult} for a gain of {myCashout.gain}</p>
+                    }
                     {/* Errors */}
                     {errorQueue.map((error, index) => <Error key={index} message={error} />)}
                 </div >

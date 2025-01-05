@@ -1,13 +1,24 @@
 from crash.records import Cashout
-from typing import Optional
+from typing import Optional, List, Any, Dict, Type
 
 
 class PlayingPlayer:
-    def __init__(self, name: str):
+    def __init__(
+        self,
+        name: str,
+        cash: int = 1000,
+        bid_history: List[int] = None,
+        gain_history: List[int] = None,
+        mult_history: List[float] = None,
+    ):
         self.name = name
         self.bid_value: int = -1
         self.has_bid: bool = False
+        self.cash = cash
         self.cashout_record: Optional[Cashout] = None
+        self.bid_history: List[int] = bid_history or []
+        self.gain_history: List[int] = gain_history or []
+        self.mult_history: List[float] = mult_history or []
 
     def cashout(self, mult: float) -> Cashout:
         assert (
@@ -23,11 +34,21 @@ class PlayingPlayer:
             return True
         return False
 
+    def reset_game(self):
+        self.cashout_record = None
+        self.has_bid = False
+        self.bid_value = -1
 
-class Player:
-    def __init__(self, name: str, cash: int):
-        self.name = name
-        self.cash = cash
-        self.bid_history = []
-        self.gain_history = []
-        self.mult_history = []
+    def to_db_entry(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "cash": self.cash,
+            "bid_history": self.bid_history,
+            "gain_history": self.gain_history,
+            "mult_history": self.mult_history,
+        }
+
+    @staticmethod
+    def from_db_entry(db_entry: Dict[str, Any]) -> Type["PlayingPlayer"]:
+        del db_entry["_id"]
+        return PlayingPlayer(**db_entry)

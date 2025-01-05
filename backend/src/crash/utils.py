@@ -1,20 +1,14 @@
-import time
-import asyncio
-from threading import Event, Thread
+from asyncio import Event, sleep, create_task
+import logging
 
 
-def sleep_and_go(duration: int, event: Event):
+async def background_sleep_and_go(duration: int, event: Event):
+    create_task(sleep_and_go(duration, event))
+
+
+async def sleep_and_go(duration: int, event: Event):
     """Sleep for `duration` s, then fire the `event`"""
-
-    def _thread_func():
-        time.sleep(duration)
-        event.set()
-
-    Thread(target=_thread_func).start()
-
-
-def run_async_in_thread(async_func):
-    # Create a new event loop in the thread and run the async function
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(async_func())
+    logging.info("Start sleep")
+    await sleep(duration)
+    logging.info("end sleep")
+    event.set()

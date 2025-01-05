@@ -2,13 +2,14 @@ import numpy as np
 import time
 from typing import Optional, Dict
 from fastapi import WebSocket
-from threading import Lock, Event, Thread
+from asyncio import Lock, Event
+import logging
 
-from crash.player import PlayingPlayer, Player
+from crash.player import PlayingPlayer
 from crash.records import Cashout, CashoutMessage
-from crash.utils import sleep_and_go
+from crash.utils import background_sleep_and_go
 
-GAME_WAIT_TIME_S = 10
+GAME_WAIT_TIME_S = 5
 
 
 class GameHandler:
@@ -30,7 +31,7 @@ class GameHandler:
         self.starting_multiplicator = starting_multiplicator
         self.multiplicator_coef = multiplicator_coef
 
-        self.players: Dict[WebSocket, Player] = {}
+        self.players: Dict[WebSocket, PlayingPlayer] = {}
 
         # For concurrent access
         self.mutex = Lock()
@@ -56,16 +57,16 @@ class GameHandler:
             game_handler_parent=self,
         )
 
-    def join(self, ws, name, cash):
-        with self.mutex:
-            self.players[ws] = Player(name, cash)
+    async def join(self, ws: WebSocket, player: PlayingPlayer):
+        async with self.mutex:
+            self.players[ws] = player
 
 
 class Game:
     def __init__(
         self,
         name: str,
-        players: Dict[WebSocket, Player],
+        players: Dict[WebSocket, PlayingPlayer],
         multiplicator_coef: float = 0.01,
         average: float = 30,
         standard_deviation: float = 10,
@@ -95,35 +96,35 @@ class Game:
 
         self.estimated_game_start_time: Optional[int] = None
 
-        self.players: Dict[WebSocket, PlayingPlayer] = {
-            ws: PlayingPlayer(player.name) for ws, player in players.items()
-        }
+        self.players: Dict[WebSocket, PlayingPlayer] = players
 
-    def start_game(self) -> bool:
+    async def start_game(self) -> bool:
         if not self.ongoing:
             self.game_duration = max(
                 self.min_time, np.random.normal(self.average, self.std)
             )
             self.ongoing = True
             self.initial_time = time.time()
-            Thread(target=self.launch_crash_timer).start()
+            await self.launch_crash_timer()
             return True
         else:
             print("Game already started.")
             return False
 
-    def start_pre_game_wait(self) -> int:
+    async def start_pre_game_wait(self) -> int:
         """Start the pre-game wait thread and return the estimated start time."""
         self.estimated_game_start_time = time.time() + GAME_WAIT_TIME_S
-        sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
+        logging.info("Gonna start pre game wait")
+        await background_sleep_and_go(GAME_WAIT_TIME_S, self.start_event)
         return self.estimated_game_start_time
 
-    def wait_for_game_start(self):
-        self.start_event.wait()
+    async def wait_for_game_start(self):
+        await self.start_event.wait()
 
     def reset_game(self):
         self.ongoing = False
-        self.players = {}
+        for player in self.players.values():
+            player.reset_game()
         self.crash_event.clear()
         self.start_event.clear()
         self.game_duration = max(
@@ -137,6 +138,9 @@ class Game:
         # Was player not here at round start?
         if ws not in self.players:
             # Player is created and added to the round
+            logging.warning(
+                "PLAYER WAS NOT HERE - why are we even accepting this bid??"
+            )
             self.players[ws] = PlayingPlayer(self.game_handler_parent.players[ws].name)
 
         # Players can only bid once
@@ -202,32 +206,35 @@ class Game:
         else:
             return False  # Game is not crashed, it has not started
 
-    def launch_crash_timer(self):
-        sleep_and_go(self.game_duration, self.crash_event)
+    async def launch_crash_timer(self):
+        logging.info("Gonna start crash timer")
+        await background_sleep_and_go(self.game_duration, self.crash_event)
 
     def get_crash_event(self):
         return self.crash_event
 
-    def wait_for_crash(self):
-        self.crash_event.wait()
+    async def wait_for_crash(self):
+        await self.crash_event.wait()
 
     def get_estimated_start_time(self) -> Optional[int]:
         return self.estimated_game_start_time
 
     def update_players_history(self):
-        for ws, player in self.players.items():
-            lobby_player = self.game_handler_parent.players[ws]
+        for player in self.players.values():
             cashout = player.cashout_record
             # Save history only if the player has bid
             if player.has_bid:
-                lobby_player.bid_history.append(player.bid_value)
+                player.bid_history.append(player.bid_value)
                 # Checks if the player has managed to cashout before crash
                 if cashout != None:
-                    lobby_player.gain_history.append(cashout.gain)
-                    lobby_player.mult_history.append(cashout.mult)
+                    player.gain_history.append(cashout.gain)
+                    player.mult_history.append(cashout.mult)
                 else:
-                    lobby_player.gain_history.append(-1 * player.bid_value)
-                    lobby_player.mult_history.append(0)
+                    player.gain_history.append(-1 * player.bid_value)
+                    player.mult_history.append(0)
+        logging.info(
+            f"After update, we have {[player.to_db_entry() for player in self.players.values()]}"
+        )
 
 
 if __name__ == "__main__":

@@ -47,11 +47,13 @@ export default function App() {
             setTimeout(() => {
                 const now = new Date();
                 const remainingTimeMs = countDownVal.estimatedStart - now;
-                setCountDownVal({
-                    estimatedStart: countDownVal.estimatedStart,
-                    // We want to countdown 100ms at a time
-                    remainingTime: remainingTimeMs / 100,
-                });
+                if (remainingTimeMs > 0) {
+                    setCountDownVal({
+                        estimatedStart: countDownVal.estimatedStart,
+                        // We want to countdown 100ms at a time
+                        remainingTime: remainingTimeMs / 100,
+                    });
+                }
                 // 95ms timeout cause we tend to get late scheduled
                 // The remaining time doesn't get offset since we're still recomputing each time
             }, 95);
@@ -68,7 +70,7 @@ export default function App() {
             console.log(`ws opened, sending ${email}`);
             ws.current.send(JSON.stringify({
                 "type": "join",
-                "name": getRandomName(),
+                "name": email,
             }));
         };
         ws.current.onclose = () => console.log("ws closed");

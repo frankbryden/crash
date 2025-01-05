@@ -1,37 +1,40 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from typing import Union
 import json
-from threading import Thread, Event, Lock
+from contextlib import asynccontextmanager
 import asyncio
-import time
 from pymongo import MongoClient
 
 from crash.game_handler import GameHandler
-from crash.utils import run_async_in_thread
+from crash.player import PlayingPlayer
+import logging
 
-app = FastAPI()
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    level=logging.DEBUG,
+    datefmt="%H:%M:%S",
+)
 
 
 class ConnectionManager:
     def __init__(self):
-        self.mutex = Lock()
+        self.mutex = asyncio.Lock()
         self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        with self.mutex:
+        async with self.mutex:
             self.active_connections.append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        with self.mutex:
+    async def disconnect(self, websocket: WebSocket):
+        async with self.mutex:
             self.active_connections.remove(websocket)
 
     async def send_personal_message_lobby(self, message: dict, websocket: WebSocket):
-        with self.mutex:
+        async with self.mutex:
             await websocket.send_text(json.dumps(message))
 
     async def broadcast_lobby(self, message: dict):
-        with self.mutex:
+        async with self.mutex:
             for connection in self.active_connections:
                 await connection.send_text(json.dumps(message))
 
@@ -48,31 +51,29 @@ game = game_handler.get_game()
 
 # Event from threading library to get event driven approach :D
 # The event is set in the websocket handler for when a player joins
-player_join_event = Event()
+player_join_event = asyncio.Event()
 
 
-async def continuously_transmit_mult(stop_event: Event):
-    while True:
+async def continuously_transmit_mult(stop_event: asyncio.Event):
+    while not stop_event.is_set():
         await manager.broadcast_lobby(
             {"type": "mult", "mult": game.get_multiplicator()}
         )
-        time.sleep(0.02)
-        if stop_event.is_set():
-            return
+        await asyncio.sleep(0.02)
 
 
 # Server loop
 async def loop():
     while True:
         current_players = game_handler.players
-        # print(current_players)
+        # logging.info(current_players)
         # If there is no player we wait for one to save CPU cycles
         if len(current_players) == 0:
-            print("Waiting for players...")
-            player_join_event.wait()
+            logging.info("Waiting for players...")
+            await player_join_event.wait()
 
         # Start timer
-        estimated_start_time = game.start_pre_game_wait()
+        estimated_start_time = await game.start_pre_game_wait()
         await manager.broadcast_lobby(
             {
                 "type": "state",
@@ -80,21 +81,21 @@ async def loop():
                 "estimated_start": estimated_start_time,
             }
         )
-        game.wait_for_game_start()
+        await game.wait_for_game_start()
 
         # Start the game
-        game.start_game()
+        await game.start_game()
         await manager.broadcast_lobby({"type": "state", "state": "playing"})
 
-        # Send the multiplicator to be drawn
-        sender = Thread(
-            target=run_async_in_thread,
-            args=(lambda: continuously_transmit_mult(game.get_crash_event()),),
-        )
-        sender.start()
+        # Send the multiplicator to be drawn until crash
+        await continuously_transmit_mult(game.get_crash_event())
 
-        # Play until crash
-        game.wait_for_crash()
+        # await asyncio.gather(transmitter_task, crash_task)
+        await asyncio.gather(
+            asyncio.shield(continuously_transmit_mult(game.get_crash_event())),
+            game.wait_for_crash(),
+        )
+
         await manager.broadcast_lobby(
             {
                 "type": "state",
@@ -117,8 +118,14 @@ def run_async_loop():
     event_loop.run_until_complete(loop())
 
 
-thread = Thread(target=run_async_loop, daemon=True)
-thread.start()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    event_loop = asyncio.get_event_loop()
+    asyncio.ensure_future(loop(), loop=event_loop)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 """
 ws: expected json
@@ -145,7 +152,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
 
             data = await websocket.receive_text()
-            print(data)
+            logging.info(data)
             message = json.loads(data)
 
             if message["type"] == "join":
@@ -163,21 +170,13 @@ async def websocket_endpoint(websocket: WebSocket):
                 if player_info == None:
                     # If not, we create their doc
                     cash = 1000
-                    player_id = players_collection.insert_one(
-                        {
-                            "name": name,
-                            "cash": cash,
-                            "bid_history": [],
-                            "gain_history": [],
-                            "mult_history": [],
-                        }
-                    )
+                    player = PlayingPlayer(name, cash=cash)
+                    player_id = players_collection.insert_one(player.to_db_entry())
                     print("Player added to db with id :", player_id)
-
                 else:
-                    cash = player_info["cash"]
+                    player = PlayingPlayer.from_db_entry(player_info)
 
-                game_handler.join(websocket, name, cash)
+                await game_handler.join(websocket, player)
 
                 # Broadcast the lobby state to everyone
                 await manager.broadcast_lobby(
@@ -221,7 +220,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     )
                 else:
                     cashout = game.cashout(websocket)
-                    print(cashout)
+                    logging.info(cashout)
                     if cashout:
                         await manager.broadcast_lobby(
                             {
@@ -238,7 +237,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
 
-        manager.disconnect(websocket)
+        await manager.disconnect(websocket)
         new_player_list = [player.name for player in game_handler.players.values()]
         new_player_list.remove(game_handler.players[websocket].name)
         print("new lobby list : ", new_player_list)
@@ -252,11 +251,13 @@ async def websocket_endpoint(websocket: WebSocket):
             }
         )
         # Update the information in the db
+        print("Updating player in db")
+        print(game_handler.players[websocket].to_db_entry())
         players_collection.update_one(
             {"name": game_handler.players[websocket].name},
             {
-                "$set": {"cash": game_handler.players[websocket].cash},
-                "$push": {
+                "$set": {
+                    "cash": game_handler.players[websocket].cash,
                     "bid_history": game_handler.players[websocket].bid_history,
                     "gain_history": game_handler.players[websocket].gain_history,
                     "mult_history": game_handler.players[websocket].mult_history,

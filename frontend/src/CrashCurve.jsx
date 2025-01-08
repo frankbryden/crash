@@ -34,6 +34,7 @@ export default function CrashCurve({ points: mults, countdown }) {
     if (canvas != null) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#e5e7eb";
 
         // Border
         ctx.beginPath();
@@ -42,7 +43,7 @@ export default function CrashCurve({ points: mults, countdown }) {
 
         if (lastMult > 0) {
             ctx.font = "50px Brush Script MT";
-            ctx.fillText(`x${lastMult}`, 25, 50);
+            ctx.fillText(`x${lastMult}`, 35, 60);
         }
 
         const ticks = getYTicks(ctx);
@@ -84,7 +85,9 @@ export default function CrashCurve({ points: mults, countdown }) {
                 tickIndex++;
             }
         }
+        ctx.strokeStyle = "#00d4ff";
         ctx.stroke();
+        ctx.strokeStyle = "#000";
 
         // Render y-axis
         ticksGeometry.forEach((tickY, tickLabel) => {
@@ -100,7 +103,7 @@ export default function CrashCurve({ points: mults, countdown }) {
 
 
     return (
-        <canvas id="curve-canvas" ref={canvasRef} width="1080px" height="480px">
+        <canvas id="curve-canvas" ref={canvasRef} width="1100px" height="480px" className="rounded-lg shadow-lg bg-gray-800">
         </canvas>
     )
 }

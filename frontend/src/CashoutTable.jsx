@@ -18,24 +18,28 @@ export default function CashoutTable({ rows }) {
     return (
         <div>
             <h2>Cashout</h2>
-            <table>
+            <table className="w-full bg-gray-800 rounded-lg shadow-md overflow-hidden">
                 <thead>
-                    <tr>
-                        <th>Player</th>
-                        <th>Bid</th>
-                        <th>Multiplier</th>
-                        <th>Gain</th>
+                    <tr className="bg-gray-700 text-gray-200">
+                        <th className="px-4 py-2">Player</th>
+                        <th className="px-4 py-2">Bid</th>
+                        <th className="px-4 py-2">Multiplier</th>
+                        <th className="px-4 py-2">Gain</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {data.map(([name, bid, mult, gain], index) =>
-                        <tr key={index}>
-                            <td>{name}</td>
-                            <td>{bid}</td>
-                            <td>{mult}</td>
-                            <td>{gain}</td>
+                    {data.map(([name, bid, mult, gain], index) => (
+                        <tr
+                            key={index}
+                            className={`text-gray-300 ${index % 2 === 0 ? "bg-gray-700" : "bg-gray-800"
+                                }`}
+                        >
+                            <td className="px-4 py-2">{name}</td>
+                            <td className="px-4 py-2">{bid}</td>
+                            <td className="px-4 py-2">{mult}</td>
+                            <td className="px-4 py-2">{gain}</td>
                         </tr>
-                    )}
+                    ))}
                 </tbody>
             </table>
         </div>

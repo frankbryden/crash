@@ -20,6 +20,8 @@ import Error from './Error';
 import useErrorQueue from './utils/useErrorQueue';
 import CashoutTable from './CashoutTable';
 import { GameStates } from './utils/constants';
+import CashValuesTable from './CashValuesTable';
+import Cashout from './Cashout';
 
 export default function App() {
     const queryClient = useQueryClient();
@@ -98,7 +100,6 @@ export default function App() {
                     setCashVaults(event.cash_vaults);
                     break;
                 case "state":
-                    // setGameState(Symbol.for(event.state));
                     setGameState(event.state);
                     if (event.state == "playing") {
                         setCountDownVal(null);
@@ -184,34 +185,39 @@ export default function App() {
     }
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
             <Navbar leftLinks={leftLinks} rightLinks={rightLinks} />
             {outlet ||
-                <div>
-                    <p>Balance: {myCash}</p>
-                    <h1>{gameState}</h1>
-                    <div>
+                <div className="flex flex-col md:flex-row gap-4 p-4 w-full">
+                    {/* Left Panel */}
+                    <div className="flex-row w-1/5">
+                        <p className="text-amber-600 font-bold text-lg">Balance: <span className="animate-pulse">{myCash}</span></p>
+                        {(gameState == GameStates.PLAYING || gameState == GameStates.CASHED_OUT) &&
+                            <>
+                                <Cashout bidAmount={myBid} hasCashedOut={gameState == GameStates.CASHED_OUT && myCashout != null} cashOutObj={myCashout} cashoutCallback={cashout} />
+                            </>
+                        }
+                        {gameState == GameStates.WAITING &&
+                            <Bidding bidFunc={makeBid} bid={myBid} />
+                        }
+                    </div>
+                    {/* Center Panel */}
+                    <div className="flex-1">
                         <CrashCurve points={points} countdown={countDownVal} />
                     </div>
-                    <Lobby players={players} />
-                    <NumbersTable title="Bids" keyColTitle="Player" valColTitle="Amount" mapping={bids} sorted={true} />
-                    <NumbersTable title="Cash vaults" keyColTitle="Player" valColTitle="Value" mapping={cashVaults} />
-                    <CashoutTable rows={cashoutData} />
-                    {gameState == GameStates.WAITING &&
-                        <Bidding bidFunc={makeBid} />
-                    }
-                    {gameState == GameStates.PLAYING && myBid != null &&
-                        <div>
-                            <p>Current bid: {myBid}</p>
-                            <FancyButton name={"Cashout"} onClick={cashout} />
-                        </div>
-                    }
-                    {gameState == GameStates.CASHED_OUT && myCashout != null &&
-                        <p>Cashed out @ x{myCashout.mult} for a gain of {myCashout.gain}</p>
-                    }
+
+                    {/* Right Panel */}
+                    <div className="flex flex-col grow space-y-4">
+                        <Lobby players={players} />
+                        <CashValuesTable title="Cash vaults" mapping={cashVaults} sorted={true} />
+                        <CashoutTable rows={cashoutData} />
+
+                        <h1>{gameState}</h1>
+                    </div>
+
                     {/* Errors */}
                     {errorQueue.map((error, index) => <Error key={index} message={error} />)}
-                </div >
+                </div>
             }
         </div >
     );

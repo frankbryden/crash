@@ -10,7 +10,7 @@ from crash.records import Cashout, CashoutMessage
 from crash.utils import background_sleep_and_go
 
 GAME_WAIT_TIME_S = 5
-INSTANT_CRASH_PROBABILITY = 1 / 10
+INSTANT_CRASH_PROBABILITY = 1
 
 
 class GameHandler:
@@ -151,7 +151,7 @@ class Game:
     def get_multiplicator(self) -> float:
         current_game_duration = time.time() - self.initial_time
         # If time has run out or the crash event is set (from instant crash) mult is 0
-        if self.game_duration < current_game_duration or self.crash_event.is_set():
+        if self.game_duration < current_game_duration:  # or self.crash_event.is_set():
             return 0
         else:
             multiplicator = np.exp(self.multiplicator_coef * current_game_duration)

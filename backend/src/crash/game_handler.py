@@ -9,7 +9,7 @@ from crash.player import PlayingPlayer
 from crash.records import Cashout, CashoutMessage
 from crash.utils import background_sleep_and_go
 
-GAME_WAIT_TIME_S = 5
+GAME_WAIT_TIME_S = 10
 INSTANT_CRASH_PROBABILITY = 1 / 10
 
 

@@ -9,7 +9,8 @@ from crash.player import PlayingPlayer
 from crash.records import Cashout, CashoutMessage
 from crash.utils import background_sleep_and_go
 
-GAME_WAIT_TIME_S = 10
+GAME_WAIT_TIME_S = 5
+INSTANT_CRASH_PROBABILITY = 1 / 10
 
 
 class GameHandler:
@@ -147,10 +148,10 @@ class Game:
         if self.players[ws].bid(bid_amount):
             self.game_handler_parent.players[ws].cash -= bid_amount
 
-    # Maybe make time an input instead and remove dependancy on time library
     def get_multiplicator(self) -> float:
         current_game_duration = time.time() - self.initial_time
-        if self.game_duration < current_game_duration:
+        # If time has run out or the crash event is set (from instant crash) mult is 0
+        if self.game_duration < current_game_duration or self.crash_event.is_set():
             return 0
         else:
             multiplicator = np.exp(self.multiplicator_coef * current_game_duration)
@@ -207,8 +208,13 @@ class Game:
             return False  # Game is not crashed, it has not started
 
     async def launch_crash_timer(self):
-        logging.info("Gonna start crash timer")
-        await background_sleep_and_go(self.game_duration, self.crash_event)
+        # There is a probability of instant crash
+        if np.random.uniform() <= INSTANT_CRASH_PROBABILITY:
+            logging.info("Instant crash!")
+            self.crash_event.set()  # Crashed
+        else:
+            logging.info("Gonna start crash timer")
+            await background_sleep_and_go(self.game_duration, self.crash_event)
 
     def get_crash_event(self):
         return self.crash_event

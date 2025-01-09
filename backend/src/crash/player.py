@@ -24,7 +24,7 @@ class PlayingPlayer:
         assert (
             self.bid_value > 0
         ), f"Player is cashing out when they haven't bid (bid = {self.bid})"
-        self.cashout_record = Cashout(mult, self.bid_value * mult)
+        self.cashout_record = Cashout(mult, int(self.bid_value * mult))
         return self.cashout_record
 
     def bid(self, amount: int) -> bool:
@@ -50,5 +50,6 @@ class PlayingPlayer:
 
     @staticmethod
     def from_db_entry(db_entry: Dict[str, Any]) -> Type["PlayingPlayer"]:
+        # Delete automatic db id to instantiate PlayingPlayer object
         del db_entry["_id"]
         return PlayingPlayer(**db_entry)

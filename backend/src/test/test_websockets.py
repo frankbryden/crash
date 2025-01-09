@@ -71,8 +71,7 @@ def test_db(name: str, players_collection):
     player_info = players_collection.find_one({"name": name, "cash": cash})
 
     # Load that player information
-    player_from_db = PlayingPlayer(name)
-    player_from_db = player_from_db.from_db_entry(player_info)
+    player_from_db = PlayingPlayer.from_db_entry(player_info)
 
     # Get the attribute of that new objects and compare them
     attributes = get_obj_attributes(player)

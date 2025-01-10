@@ -18,8 +18,8 @@ class GameHandler:
     def __init__(
         self,
         name: str = "New Lobby",
-        average: float = 30,
-        standard_deviation: float = 10,
+        average: float = 5,
+        standard_deviation: float = 5,
         minimum_time: float = 3,
         starting_multiplicator: float = 0.75,
         multiplicator_coef: float = 0.1,

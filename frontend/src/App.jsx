@@ -99,6 +99,10 @@ export default function App() {
                     setPlayers(event.lobby);
                     setCashVaults(event.cash_vaults);
                     break;
+                case "leave":
+                    setPlayers(event.lobby);
+                    setCashVaults(event.cash_vaults);
+                    break;
                 case "state":
                     setGameState(event.state);
                     if (event.state == "playing") {
@@ -207,7 +211,7 @@ export default function App() {
                     </div>
 
                     {/* Right Panel */}
-                    <div className="flex flex-col grow space-y-4">
+                    <div className="flex flex-col grow space-y-4 min-w-96">
                         <Lobby players={players} />
                         <CashValuesTable title="Cash vaults" mapping={cashVaults} sorted={true} />
                         <CashoutTable rows={cashoutData} />

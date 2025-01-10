@@ -177,7 +177,7 @@ class Game:
     def get_bids(self, current_players: dict) -> Dict[str, int]:
         bids_dict = {}
         for ws in current_players:
-            if ws in self.players:
+            if ws in self.players and self.players[ws].has_bid:
                 bids_dict[current_players[ws].name] = self.players[ws].bid_value
 
         return bids_dict

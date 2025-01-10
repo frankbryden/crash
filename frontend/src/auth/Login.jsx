@@ -30,6 +30,10 @@ export default function Login() {
         setToken(userCred.user.accessToken);
     }
 
+    function signInAsUser(jwt) {
+        setToken(jwt);
+    }
+
     return (
         <div>
             {token ?
@@ -38,6 +42,7 @@ export default function Login() {
                 <div>
                     <h1>Please login</h1> <br />
                     <button onClick={launchAuth}>Login with Firebase</button>
+                    <button onClick={() => signInAsUser("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InVzZXJBIn0.gZ7MUilFmj3_MfX644CFCe3E0efLzY6-GO6JXi374Mk")}>Login as userA</button>
                 </div>
             }
         </div>

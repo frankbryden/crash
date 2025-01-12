@@ -177,7 +177,7 @@ class Game:
     def get_bids(self, current_players: dict) -> Dict[str, int]:
         bids_dict = {}
         for ws in current_players:
-            if ws in self.players:
+            if ws in self.players and self.players[ws].has_bid:
                 bids_dict[current_players[ws].name] = self.players[ws].bid_value
 
         return bids_dict
@@ -193,10 +193,8 @@ class Game:
         }
 
     # States management
-    def is_waiting(self) -> bool:
-        return (
-            time.time() - self.waiting_initial_time
-        ) < GAME_WAIT_TIME_S  # 10 seconds wait for now
+    def is_playing(self) -> bool:
+        return self.ongoing
 
     def reset_waiting_time(self):
         self.waiting_initial_time = time.time()

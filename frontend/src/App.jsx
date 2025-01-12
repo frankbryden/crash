@@ -1,4 +1,4 @@
-import { useLoaderData, useOutlet, useNavigate } from 'react-router-dom';
+import { useLoaderData, useOutlet, useNavigate, json } from 'react-router-dom';
 import {
     useQueryClient,
 } from 'react-query';
@@ -14,8 +14,6 @@ import { useEffect, useState, useRef } from 'react';
 import { getRandomName } from './utils/names';
 import Lobby from './Lobby';
 import Bidding from './Bidding';
-import NumbersTable from './NumbersTable';
-import FancyButton from './FancyButton';
 import Error from './Error';
 import useErrorQueue from './utils/useErrorQueue';
 import CashoutTable from './CashoutTable';
@@ -39,7 +37,7 @@ export default function App() {
     const [bids, setBids] = useState({});
     const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
-    const [cashoutData, setCashoutData] = useState([]);
+    const [cashoutData, setCashoutData] = useState({ currentRound: {}, previousRound: {} });
     const [countDownVal, setCountDownVal] = useState(null);
 
     useEffect(() => {
@@ -78,8 +76,8 @@ export default function App() {
     }
 
     let myCashout = null;
-    if (email in cashoutData) {
-        myCashout = cashoutData[email];
+    if (email in cashoutData.currentRound) {
+        myCashout = cashoutData.currentRound[email];
     }
 
     useEffect(() => {
@@ -98,19 +96,29 @@ export default function App() {
                 case "join":
                     setPlayers(event.lobby);
                     setCashVaults(event.cash_vaults);
+                    setGameState(event.state);
+                    break;
+                case "leave":
+                    setPlayers(event.lobby);
+                    setCashVaults(event.cash_vaults);
                     break;
                 case "state":
                     setGameState(event.state);
                     if (event.state == "playing") {
                         setCountDownVal(null);
                         setPoints([]);
-                        setCashoutData([]);
                     } else if (event.state == "waiting") {
                         setCountDownVal({
                             estimatedStart: event.estimated_start * 1000,
                             // We want to countdown 100ms at a time (and there's 100 of those in 10s)
-                            remainingTime: 300
+                            remainingTime: 100
                         });
+                        setCashoutData((prev) => (
+                            {
+                                currentRound: {},
+                                previousRound: prev.currentRound,
+                            })
+                        );
                     } else if (event.state == "crashed") {
                         setBids({});
                         setCashVaults(event.cash_vaults);
@@ -119,6 +127,10 @@ export default function App() {
                 case "bid":
                     setBids(event.bids);
                     setCashVaults(event.cash_vaults);
+                    setCashoutData((prev) => ({
+                        ...prev,
+                        currentRound: event.cashouts,
+                    }));
                     break;
                 case "error":
                     addError(event.message);
@@ -132,7 +144,10 @@ export default function App() {
                     if (event.target == email) {
                         setGameState(GameStates.CASHED_OUT);
                     }
-                    setCashoutData(event.cashouts);
+                    setCashoutData((prev) => ({
+                        ...prev,
+                        currentRound: event.cashouts,
+                    }));
                     break;
                 default:
                     break;
@@ -193,9 +208,7 @@ export default function App() {
                     <div className="flex-row w-1/5">
                         <p className="text-amber-600 font-bold text-lg">Balance: <span className="animate-pulse">{myCash}</span></p>
                         {(gameState == GameStates.PLAYING || gameState == GameStates.CASHED_OUT) &&
-                            <>
-                                <Cashout bidAmount={myBid} hasCashedOut={gameState == GameStates.CASHED_OUT && myCashout != null} cashOutObj={myCashout} cashoutCallback={cashout} />
-                            </>
+                            <Cashout bidAmount={myBid} hasCashedOut={gameState == GameStates.CASHED_OUT && myCashout != null} cashOutObj={myCashout} cashoutCallback={cashout} />
                         }
                         {gameState == GameStates.WAITING &&
                             <Bidding bidFunc={makeBid} bid={myBid} />
@@ -207,12 +220,13 @@ export default function App() {
                     </div>
 
                     {/* Right Panel */}
-                    <div className="flex flex-col grow space-y-4">
+                    <div className="flex flex-col grow space-y-4 min-w-96">
                         <Lobby players={players} />
                         <CashValuesTable title="Cash vaults" mapping={cashVaults} sorted={true} />
-                        <CashoutTable rows={cashoutData} />
-
-                        <h1>{gameState}</h1>
+                        <CashoutTable title="Current round" rows={cashoutData.currentRound} active={true} />
+                        {Object.keys(cashoutData.previousRound).length > 0 &&
+                            <CashoutTable title="Previous round" rows={cashoutData.previousRound} active={false} />
+                        }
                     </div>
 
                     {/* Errors */}

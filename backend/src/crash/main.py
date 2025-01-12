@@ -188,7 +188,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         ],
                         "cash_vaults": game.get_cash_vaults(game_handler.players),
                         "bids": game.get_bids(game_handler.players),
-                        "state": "waiting" if game.is_waiting() else "playing",
+                        "state": "playing" if game.is_playing() else "waiting",
                     }
                 )
 
@@ -210,6 +210,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             "amount": amount,
                             "bids": game.get_bids(game_handler.players),
                             "cash_vaults": game.get_cash_vaults(game_handler.players),
+                            "cashouts": game.get_cashouts(),
                         }
                     )
 

@@ -126,10 +126,9 @@ export default function App() {
                 case "bid":
                     setBids(event.bids);
                     setCashVaults(event.cash_vaults);
-                    const localCopy = event.cashouts;
                     setCashoutData((prev) => ({
                         ...prev,
-                        currentRound: localCopy,
+                        currentRound: event.cashouts,
                     }));
                     break;
                 case "error":

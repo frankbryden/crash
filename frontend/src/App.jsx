@@ -227,7 +227,6 @@ export default function App() {
                         {Object.keys(cashoutData.previousRound).length > 0 &&
                             <CashoutTable title="Previous round" rows={cashoutData.previousRound} active={false} />
                         }
-                        <h1>{gameState}</h1>
                     </div>
 
                     {/* Errors */}

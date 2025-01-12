@@ -1,5 +1,7 @@
 export default function Cashout({ bidAmount, hasCashedOut, cashOutObj, cashoutCallback }) {
     const playing = bidAmount > 0;
+    const playingActiveButtonStyle = "bg-green-500 hover:bg-green-400 hover:shadow-xl active:bg-green-600";
+    const playingInactiveButtonStyle = "bg-green-700";
 
     return (
         <div className="flex flex-col items-center bg-gray-800 p-4 rounded-lg shadow-md space-y-4 space-x-4">
@@ -17,10 +19,14 @@ export default function Cashout({ bidAmount, hasCashedOut, cashOutObj, cashoutCa
             }
             <button
                 onClick={() => cashoutCallback()}
-                disabled={!playing}
-                className={"inline-block px-6 py-3 text-gray-900 font-bold text-lg rounded-lg shadow-lg transition duration-300 " + (playing ? "bg-green-500 hover:bg-green-400 hover:shadow-xl active:bg-green-600" : "bg-gray-700")}
+                disabled={!playing || hasCashedOut}
+                className={"inline-block px-6 py-3 text-gray-900 font-bold text-lg rounded-lg shadow-lg transition duration-300 " + (playing ? (hasCashedOut ? playingInactiveButtonStyle : playingActiveButtonStyle) : "bg-gray-700")}
             >
-                Cashout
+                {hasCashedOut ?
+                    "Cashed out"
+                    :
+                    "Cashout"
+                }
             </button>
         </div>
     )

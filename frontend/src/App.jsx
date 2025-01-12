@@ -76,8 +76,8 @@ export default function App() {
     }
 
     let myCashout = null;
-    if (email in cashoutData) {
-        myCashout = cashoutData[email];
+    if (email in cashoutData.currentRound) {
+        myCashout = cashoutData.currentRound[email];
     }
 
     useEffect(() => {
@@ -96,6 +96,7 @@ export default function App() {
                 case "join":
                     setPlayers(event.lobby);
                     setCashVaults(event.cash_vaults);
+                    setGameState(event.state);
                     break;
                 case "leave":
                     setPlayers(event.lobby);
@@ -207,9 +208,7 @@ export default function App() {
                     <div className="flex-row w-1/5">
                         <p className="text-amber-600 font-bold text-lg">Balance: <span className="animate-pulse">{myCash}</span></p>
                         {(gameState == GameStates.PLAYING || gameState == GameStates.CASHED_OUT) &&
-                            <>
-                                <Cashout bidAmount={myBid} hasCashedOut={gameState == GameStates.CASHED_OUT && myCashout != null} cashOutObj={myCashout} cashoutCallback={cashout} />
-                            </>
+                            <Cashout bidAmount={myBid} hasCashedOut={gameState == GameStates.CASHED_OUT && myCashout != null} cashOutObj={myCashout} cashoutCallback={cashout} />
                         }
                         {gameState == GameStates.WAITING &&
                             <Bidding bidFunc={makeBid} bid={myBid} />

@@ -1,9 +1,6 @@
 export default function Cashout({ bidAmount, hasCashedOut, cashOutObj, cashoutCallback }) {
     const playing = bidAmount > 0;
 
-    console.log(hasCashedOut);
-    console.log(cashOutObj);
-
     return (
         <div className="flex flex-col items-center bg-gray-800 p-4 rounded-lg shadow-md space-y-4 space-x-4">
             <p className="text-lg font-semibold text-gray-200">Cashout</p>

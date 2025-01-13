@@ -13,7 +13,7 @@ import Gift from "./Gift";
  *                          on the right side of the navbar
  * @returns A navbar rendering the links.
  */
-export default function Navbar({ leftLinks, rightLinks, giftData }) {
+export default function Navbar({ leftLinks, rightLinks, giftData, claimGift }) {
     const { token } = useToken();
     const { picture } = useTokenDecoded(token);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function Navbar({ leftLinks, rightLinks, giftData }) {
                             </li>
                         ))}
                     </ul>
-                    <Gift isActive={giftData.active} nextAvailableGift={giftData.nextAvailableGift} />
+                    <Gift isActive={giftData.active} nextAvailableGift={giftData.nextAvailableGift} claimGift={claimGift} />
                     <a href="#">
                         <img
                             src={picture}

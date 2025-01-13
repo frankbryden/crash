@@ -47,7 +47,7 @@ class PlayingPlayer:
 
     def try_claim_gift(self) -> bool:
         # Has user waited long enough since the last claim?
-        if self.last_gift_claim - time() > GIFT_CLAIM_TIME_S:
+        if time() - self.last_gift_claim > GIFT_CLAIM_TIME_S:
             self.cash += STARTING_VALUE
             self.last_gift_claim = time()
             return True

@@ -244,6 +244,21 @@ async def websocket_endpoint(websocket: WebSocket):
                                 "cashouts": game.get_cashouts(),
                             }
                         )
+            elif message["type"] == "gift":
+                player = game_handler.players[websocket]
+                if player.try_claim_gift():
+                    await manager.send_personal_message_lobby(
+                        {
+                            "type": "gift",
+                            "next_available_gift": player.get_gift_claim_time(),
+                            "cash": player.cash,
+                        },
+                        websocket,
+                    )
+                else:
+                    await manager.send_personal_message_lobby(
+                        {"type": "error", "message": "No gift available."}, websocket
+                    )
 
     except WebSocketDisconnect:
 

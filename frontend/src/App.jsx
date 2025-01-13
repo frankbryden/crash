@@ -105,9 +105,12 @@ export default function App() {
                     break;
                 case "gift":
                     setGiftData({
-                        active: event.next_available_gift < new Date().getTime() / 1000,
-                        nextAvailableGift: event.next_available_gift,
+                        nextAvailableGift: new Date(event.next_available_gift*1000),
                     });
+                    setCashVaults((prev) => ({
+                        ...prev,
+                        [email]: event.cash,
+                    }))
                     break;
                 case "state":
                     setGameState(event.state);
@@ -195,6 +198,16 @@ export default function App() {
         }));
     }
 
+    function claimGift() {
+        if (ws == null) {
+            return;
+        }
+        const wsCurrent = ws.current;
+        wsCurrent.send(JSON.stringify({
+            "type": "gift",
+        }));
+    }
+
     function cashout() {
         if (ws == null) {
             return;
@@ -208,7 +221,7 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-            <Navbar leftLinks={leftLinks} rightLinks={rightLinks} giftData={giftData} />
+            <Navbar leftLinks={leftLinks} rightLinks={rightLinks} giftData={giftData} claimGift={claimGift} />
             {outlet ||
                 <div className="flex flex-col md:flex-row gap-4 p-4 w-full">
                     {/* Left Panel */}

@@ -10,7 +10,7 @@ import logging
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
-    level=logging.DEBUG,
+    level=logging.INFO,
     datefmt="%H:%M:%S",
 )
 
@@ -31,6 +31,7 @@ class ConnectionManager:
 
     async def send_personal_message_lobby(self, message: dict, websocket: WebSocket):
         async with self.mutex:
+            logging.info(f"[send_personal_message_lobby] sending {message}")
             await websocket.send_text(json.dumps(message))
 
     async def broadcast_lobby(self, message: dict):
@@ -177,6 +178,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     player = PlayingPlayer.from_db_entry(player_info)
 
                 await game_handler.join(websocket, player)
+                logging.info("Sending personal message for gift")
+                await manager.send_personal_message_lobby(
+                    {
+                        "type": "gift",
+                        "next_available_gift": player.get_gift_claim_time(),
+                    },
+                    websocket,
+                )
 
                 # Broadcast the lobby state to everyone
                 await manager.broadcast_lobby(

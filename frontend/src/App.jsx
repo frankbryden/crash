@@ -38,6 +38,7 @@ export default function App() {
     const [cashVaults, setCashVaults] = useState({});
     const [gameState, setGameState] = useState("");
     const [cashoutData, setCashoutData] = useState({ currentRound: {}, previousRound: {} });
+    const [giftData, setGiftData] = useState({ active: false, nextAvailableGift: new Date() });
     const [countDownVal, setCountDownVal] = useState(null);
 
     useEffect(() => {
@@ -101,6 +102,12 @@ export default function App() {
                 case "leave":
                     setPlayers(event.lobby);
                     setCashVaults(event.cash_vaults);
+                    break;
+                case "gift":
+                    setGiftData({
+                        active: event.next_available_gift < new Date().getTime() / 1000,
+                        nextAvailableGift: event.next_available_gift,
+                    });
                     break;
                 case "state":
                     setGameState(event.state);
@@ -201,7 +208,7 @@ export default function App() {
 
     return (
         <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col">
-            <Navbar leftLinks={leftLinks} rightLinks={rightLinks} />
+            <Navbar leftLinks={leftLinks} rightLinks={rightLinks} giftData={giftData} />
             {outlet ||
                 <div className="flex flex-col md:flex-row gap-4 p-4 w-full">
                     {/* Left Panel */}

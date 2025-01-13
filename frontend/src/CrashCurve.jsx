@@ -103,7 +103,7 @@ export default function CrashCurve({ points: mults, countdown }) {
 
 
     return (
-        <canvas id="curve-canvas" ref={canvasRef} width="1100px" height="480px" className="rounded-lg shadow-lg bg-gray-800">
+        <canvas id="curve-canvas" ref={canvasRef} width="700px" height="480px" className="rounded-lg shadow-lg bg-gray-800">
         </canvas>
     )
 }

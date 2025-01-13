@@ -3,6 +3,7 @@ import useTokenDecoded from "./auth/useTokenDecoded";
 import { host } from "./utils/constants";
 import { useState } from "react";
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
+import Gift from "./Gift";
 
 /**
  * Navbar placed top of the page with links and an icon.
@@ -12,7 +13,7 @@ import { ChevronDownIcon } from '@heroicons/react/24/solid';
  *                          on the right side of the navbar
  * @returns A navbar rendering the links.
  */
-export default function Navbar({ leftLinks, rightLinks }) {
+export default function Navbar({ leftLinks, rightLinks, giftData, claimGift }) {
     const { token } = useToken();
     const { picture } = useTokenDecoded(token);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -20,7 +21,7 @@ export default function Navbar({ leftLinks, rightLinks }) {
     const toggleDropdown = () => {
         setIsDropdownOpen(!isDropdownOpen);
     };
-    
+
     return (
         <nav className="bg-gradient-to-r from-blue-500 to-purple-500 shadow-lg relative z-50">
             <div className="flex items-center justify-between p-4">
@@ -70,10 +71,8 @@ export default function Navbar({ leftLinks, rightLinks }) {
                                 </a>
                             </li>
                         ))}
-                        <li>
-                            <a href="#" className="block py-2 px-3 text-white rounded hover:bg-gray-100 md:hover:bg-transparent md:hover:text-yellow-200 md:p-0">Login</a>
-                        </li>
                     </ul>
+                    <Gift isActive={giftData.active} nextAvailableGift={giftData.nextAvailableGift} claimGift={claimGift} />
                     <a href="#">
                         <img
                             src={picture}
